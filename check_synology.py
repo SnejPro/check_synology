@@ -554,8 +554,11 @@ if 'ups' in mode  or mode == 'all':
     queue['1.3.6.1.4.1.6574.4.3.12.0'] = { "name": 'UPS Battery Type', "tag": 'ups-battery-type', "check": False, "perf": False, "inv": False, }
 
     res = snmpget(queue)
-    merge(res)
-    render(queue)
+    if res['1.3.6.1.4.1.6574.4.1.1.0'] != 'No Such Instance currently exists at this OID':
+        merge(res)
+        render(queue)
+    else:
+        returnstring += " No UPS found"
 
 if 'network' in mode or mode == 'all':
     networks = snmpwalk('1.3.6.1.2.1.31.1.1.1.1')

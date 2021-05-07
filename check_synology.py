@@ -20,7 +20,7 @@ parser.add_argument("--auth_prot", help="SNMPv3 - authentication protocol", type
 parser.add_argument("--priv_prot", help="SNMPv3 - privacy (encryption) protocol", type=str, default="AES", choices=["DES", "AES", "None"])
 parser.add_argument("-a", dest="auth_key", help="SNMPv3 - authentication key", type=str)
 parser.add_argument("-p", dest="priv_key", help="SNMPv3 - privacy key", type=str)
-parser.add_argument("-C", dest="community", help="SNMP v1, v2c - community", type=str)
+parser.add_argument("-C", dest="community", help="SNMP v1, v2c - community", default="public", type=str)
 
 parser.add_argument("-m", dest="mode", help="Comma-seperated list of modes that should be checked: load,memory,disk,raid,storage,ups,status,update,all", type=str, default='all')
 parser.add_argument("-x", dest="exclude_mode", help="Comma-seperated list of modes that should not be checked", type=str)

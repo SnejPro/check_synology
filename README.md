@@ -10,7 +10,7 @@
 | --priv_prot | SNMPv3 - privacy (encryption) protocol | *AES/DES* | *AES* | NO |
 | -a | SNMPv3 - authentication key | string | None | YES (for SNMPv3) |
 | -p | SNMPv3 - privacy key| string | None | YES (for SNMPv3) |
-| -C | SNMPv1/2 - community| string | None | YES (for SNMPv1/2) |
+| -C | SNMPv1/2 - community| string | *public* | YES (for SNMPv1/2) |
 | -m | mode - selected measurements | *load,memory,disk,raid,storage,ups,status,update,all* (comma-seperated list) | *all* | None |
 | -x | mode - excluded measurements | *load,memory,disk,raid,storage,ups,status,update* (comma-seperated list) | None | None |
 | -c | Load - number of cpu cores for calculating thresholds | int | *4* | None |

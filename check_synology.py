@@ -11,34 +11,35 @@ AUTHOR = "SnejPro"
 VERSION = 0.1
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-H", dest="hostname", help="the hostname", type=str)
-parser.add_argument("-v", dest="version", help="snmp version", type=str, default='3', choices=["1","2c","3"])
-parser.add_argument("--port", dest="port", help="the snmp port", type=int, default=161)
+parser.add_argument("-H", dest="hostname", help="Hostname/IP-adress", type=str)
+parser.add_argument("-v", dest="version", help="SNMP version", type=str, default='3', choices=["1","2c","3"])
+parser.add_argument("--port", dest="port", help="SNMP oirt", type=int, default=161)
 
-parser.add_argument("-u", dest="username", help="the snmp user name", type=str)
-parser.add_argument("--auth_prot", help="Authentication Protocol", type=str, default="MD5", choices=["MD5", "SHA", "None"])
-parser.add_argument("--priv_prot", help="Privacy (Encryption) Protocol", type=str, default="AES", choices=["DES", "AES", "None"])
-parser.add_argument("-a", dest="auth_key", help="the auth key", type=str)
-parser.add_argument("-p", dest="priv_key", help="the priv key", type=str)
-parser.add_argument("-C", dest="community", help="SNMP v1, v2c Community", type=str)
+parser.add_argument("-u", dest="username", help="SNMPv3 - username", type=str)
+parser.add_argument("--auth_prot", help="SNMPv3 - authentication protocol", type=str, default="SHA", choices=["MD5", "SHA", "None"])
+parser.add_argument("--priv_prot", help="SNMPv3 - privacy (encryption) protocol", type=str, default="AES", choices=["DES", "AES", "None"])
+parser.add_argument("-a", dest="auth_key", help="SNMPv3 - authentication key", type=str)
+parser.add_argument("-p", dest="priv_key", help="SNMPv3 - privacy key", type=str)
+parser.add_argument("-C", dest="community", help="SNMP v1, v2c - community", default="public", type=str)
 
-parser.add_argument("-m", dest="mode", help="the mode", type=str, default='all')
+parser.add_argument("-m", dest="mode", help="Comma-seperated list of modes that should be checked: load,memory,disk,raid,storage,ups,status,update,all", type=str, default='all')
+parser.add_argument("-x", dest="exclude_mode", help="Comma-seperated list of modes that should not be checked", type=str)
 
-parser.add_argument("-c", dest="cpu", help="cpu cores", type=int, default=4)
-parser.add_argument("--memory_warn", help="Warning Memory Utilization (Percent)", type=int, default=80)
-parser.add_argument("--memory_crit", help="Critical Memory Utilization (Percent)", type=int, default=90)
-parser.add_argument("--net_warn", help="Warning Network Utilization (Percent)", type=int, default=90)
-parser.add_argument("--net_crit", help="Critical Network Utilization (Percent)", type=int, default=95)
-parser.add_argument("--temp_warn", help="Warning NAS Temperature", type=int, default=60)
-parser.add_argument("--temp_crit", help="Critical NAS Temperature", type=int, default=80)
-parser.add_argument("--disk_temp_warn", help="Warning Disk Temp", type=int, default=50)
-parser.add_argument("--disk_temp_crit", help="Critical Disk Temp", type=int, default=70)
-parser.add_argument("--storage_used_warn", help="Warning Storage Usage", type=int, default=80)
-parser.add_argument("--storage_used_crit", help="Critical Storage Usage", type=int, default=90)
-parser.add_argument("--ups_level_warn", help="Warning UPS Battery", type=int, default=50)
-parser.add_argument("--ups_level_crit", help="Critical UPS Battery", type=int, default=30)
-parser.add_argument("--ups_load_warn", help="Warning UPS Load", type=int, default=80)
-parser.add_argument("--ups_load_crit", help="Critical UPS Load", type=int, default=90)
+parser.add_argument("-c", dest="cpu", help="Load - number of cpu cores for calculating thresholds", type=int, default=4)
+parser.add_argument("--memory_warn", help="Memory - warning utilization (percent)", type=int, default=80)
+parser.add_argument("--memory_crit", help="Memory - critical utilization (percent)", type=int, default=90)
+parser.add_argument("--net_warn", help="Network - warning utilization (percent of linkspeed)", type=int, default=90)
+parser.add_argument("--net_crit", help="Network - critical utilization (percent of linkspeed)", type=int, default=95)
+parser.add_argument("--temp_warn", help="Status - warning NAS temperature", type=int, default=60)
+parser.add_argument("--temp_crit", help="Status - critical NAS temperature", type=int, default=80)
+parser.add_argument("--disk_temp_warn", help="Disk - warning temperature", type=int, default=50)
+parser.add_argument("--disk_temp_crit", help="Disk - critical temperature", type=int, default=70)
+parser.add_argument("--storage_used_warn", help="Storage - warning usage (percent)", type=int, default=80)
+parser.add_argument("--storage_used_crit", help="Storage - critical usage (percent)", type=int, default=90)
+parser.add_argument("--ups_level_warn", help="UPS - warning battery level (percent)", type=int, default=50)
+parser.add_argument("--ups_level_crit", help="UPS - critical battery level (percent)", type=int, default=30)
+parser.add_argument("--ups_load_warn", help="UPS - warning load (percent)", type=int, default=80)
+parser.add_argument("--ups_load_crit", help="UPS - critical load (percent)", type=int, default=90)
 args = parser.parse_args()
 
 returnstring = ""
@@ -147,6 +148,11 @@ if args.mode != 'all':
     mode = re.findall("[a-z]+", args.mode)
 else:
     mode = args.mode
+ 
+if args.exclude_mode != None:
+    exclude_mode = re.findall("[a-z]+", args.exclude_mode)
+else:
+    exclude_mode = []
 
 network_mesurement_time = 5
 state = 'OK'
@@ -230,6 +236,8 @@ def check_standard(value, warn, crit, inv=False):
 def check_ups_status(value):
     if value == "OL":
         locstate = "OK"
+    elif value == "OL CHRG":
+        locstate = "WARNING"
     else:
         locstate = "CRITICAL"
     
@@ -437,7 +445,7 @@ def exitCode():
     if state == 'UNKNOWN':
         sys.exit(3)
 
-if 'load' in mode or mode == 'all':
+if ('load' in mode or mode == 'all') and 'load' not in exclude_mode:
     returnstring += "\n\nLoad:"
     queue = {}
     queue['1.3.6.1.4.1.2021.10.1.3.1'] = { "name": 'Load - 1', "tag": 'load-1', "check": "check_standard", "warn": cpu_cores*2, "crit": cpu_cores*4, "perf": True, "inv": False, }
@@ -447,7 +455,7 @@ if 'load' in mode or mode == 'all':
     merge(res)
     render(queue)
 
-if 'memory' in mode or mode == 'all':
+if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
     returnstring += "\n\nMemory:"
     queue = {}
     
@@ -463,7 +471,7 @@ if 'memory' in mode or mode == 'all':
     queue['1.3.6.1.4.1.2021.4.6.0']['crit'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_crit/100)
     render(queue, unit='B')
 
-if 'disk' in mode  or mode == 'all':
+if ('disk' in mode  or mode == 'all') and 'disk' not in exclude_mode:
     returnstring += "\n\nDisks:"
     disks = snmpwalk('1.3.6.1.4.1.6574.2.1.1.2');
     for k, v in disks.items():
@@ -478,7 +486,7 @@ if 'disk' in mode  or mode == 'all':
         merge(res)
         render(queue)
 
-if 'storage' in mode  or mode == 'all':
+if ('storage' in mode  or mode == 'all') and 'storage' not in exclude_mode:
     returnstring += "\n\nStorages:"
     queue = {}
     storages = snmpwalk('1.3.6.1.2.1.25.2.3.1.3');
@@ -499,7 +507,7 @@ if 'storage' in mode  or mode == 'all':
         merge(res)
         render_storage(queue)
 
-if 'raid' in mode  or mode == 'all':
+if ('raid' in mode  or mode == 'all') and 'raid' not in exclude_mode:
     returnstring += "\n\nRaids:"
     queue = {}
     raids = snmpwalk('1.3.6.1.4.1.6574.3.1.1.2');
@@ -512,7 +520,7 @@ if 'raid' in mode  or mode == 'all':
     merge(res)
     render(queue)
 
-if 'update' in mode  or mode == 'all':
+if ('update' in mode  or mode == 'all') and 'update' not in exclude_mode:
     returnstring += "\n\nUpdate:"
     queue = {}
     
@@ -523,7 +531,7 @@ if 'update' in mode  or mode == 'all':
     merge(res)
     render(queue)
 
-if 'status' in mode  or mode == 'all':
+if ('status' in mode  or mode == 'all') and 'status' not in exclude_mode:
     returnstring += "\n\nStatus:"
     queue = {}
     
@@ -539,7 +547,7 @@ if 'status' in mode  or mode == 'all':
     merge(res)
     render(queue)
 
-if 'ups' in mode  or mode == 'all':
+if ('ups' in mode  or mode == 'all') and 'ups' not in exclude_mode:
     returnstring += "\n\nUPS:"
     queue = {}
     
@@ -554,10 +562,13 @@ if 'ups' in mode  or mode == 'all':
     queue['1.3.6.1.4.1.6574.4.3.12.0'] = { "name": 'UPS Battery Type', "tag": 'ups-battery-type', "check": False, "perf": False, "inv": False, }
 
     res = snmpget(queue)
-    merge(res)
-    render(queue)
+    if res['1.3.6.1.4.1.6574.4.1.1.0'] != 'No Such Instance currently exists at this OID':
+        merge(res)
+        render(queue)
+    else:
+        returnstring += " No UPS found"
 
-if 'network' in mode or mode == 'all':
+if ('network' in mode or mode == 'all') and 'network' not in exclude_mode:
     networks = snmpwalk('1.3.6.1.2.1.31.1.1.1.1')
     network_speeds = snmpwalk('1.3.6.1.2.1.31.1.1.1.15')
     networks_connected = []

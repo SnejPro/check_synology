@@ -236,6 +236,8 @@ def check_standard(value, warn, crit, inv=False):
 def check_ups_status(value):
     if value == "OL":
         locstate = "OK"
+    elif value == "OL CHRG":
+        locstate = "WARNING"
     else:
         locstate = "CRITICAL"
     

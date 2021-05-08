@@ -1,0 +1,561 @@
+{
+    "Command": {
+        "check_synology": {
+            "arguments": {
+                "--auth_prot": {
+                    "description": "SNMPv3 - authentication protocol",
+                    "value": "$snmpv3_auth_proto$"
+                },
+                "--disk_temp_crit": {
+                    "description": "Disk - critical temperature (in \u00b0C)",
+                    "value": "$disk_temp_crit$"
+                },
+                "--disk_temp_warn": {
+                    "description": "Disk - warning temperature (in \u00b0C)",
+                    "value": "$disk_temp_warn$"
+                },
+                "--memory_crit": {
+                    "description": "Memory - critical utilization (in percent)",
+                    "value": "$mem_critical$"
+                },
+                "--memory_warn": {
+                    "description": "Memory - warning utilization (in percent)",
+                    "value": "$mem_warning$"
+                },
+                "--net_crit": {
+                    "description": "Network - critical utilization (in percent)",
+                    "value": "$network_crit$"
+                },
+                "--net_warn": {
+                    "description": "Network - warning utilization (in percent)",
+                    "value": "$network_warn$"
+                },
+                "--port": {
+                    "description": "SNMP port",
+                    "value": "$snmp_port$"
+                },
+                "--priv_prot": {
+                    "description": "SNMPv3 - privacy (encryption) protocol",
+                    "value": "$snmpv3_priv_proto$"
+                },
+                "--storage_used_crit": {
+                    "description": "Storage - critical usage (in percent)",
+                    "value": "$storage_used_crit$"
+                },
+                "--storage_used_warn": {
+                    "description": "Storage - warning usage (in percent)",
+                    "value": "$storage_used_warn$"
+                },
+                "--temp_crit": {
+                    "description": "Status - critical NAS temperature (in \u00b0C)",
+                    "value": "$temp_crit$"
+                },
+                "--temp_warn": {
+                    "description": "Status - warning NAS temperature (in \u00b0C)",
+                    "value": "$temp_warn$"
+                },
+                "--ups_level_crit": {
+                    "description": "UPS - critical battery level (in percent)",
+                    "value": "$ups_level_crit$"
+                },
+                "--ups_level_warn": {
+                    "description": "UPS - warning battery level (in percent)",
+                    "value": "$ups_level_warn$"
+                },
+                "--ups_load_crit": {
+                    "description": "UPS - critical load (in percent)",
+                    "value": "$ups_load_crit$"
+                },
+                "--ups_load_warn": {
+                    "description": "UPS - warning load (in percent)",
+                    "value": "$ups_load_warn$"
+                },
+                "-C": {
+                    "description": "SNMPv1\/2 - community",
+                    "value": "$snmp_community_name$"
+                },
+                "-H": {
+                    "description": "SNMP host",
+                    "value": "$snmpv3_address$"
+                },
+                "-a": {
+                    "description": "SNMPv3 - authentication key",
+                    "value": "$snmpv3_auth_key$"
+                },
+                "-c": {
+                    "description": "Load - number of cpu cores for calculating thresholds",
+                    "value": "$cpu_cores$"
+                },
+                "-m": {
+                    "description": "mode - selected measurements - load,memory, disk, raid, storage, ups, status, update, all (comma-seperated list)",
+                    "value": "$synology_mode$"
+                },
+                "-p": {
+                    "description": "SNMPv3 - privacy key",
+                    "value": "$snmpv3_priv_key$"
+                },
+                "-u": {
+                    "description": "SNMPv3 - username",
+                    "value": "$snmpv3_user$"
+                },
+                "-v": {
+                    "description": "SNMP version",
+                    "value": "$snmp_version$"
+                },
+                "-x": {
+                    "description": "mode - excluded measurements - load,memory, disk, raid, storage, ups, status, update (comma-seperated list)",
+                    "value": "$synology_exclude_mode$"
+                }
+            },
+            "command": "check_synology.py",
+            "disabled": false,
+            "fields": [
+                {
+                    "datafield_id": 111,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 110,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 3,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 4,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 121,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 122,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 69,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 119,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 120,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 64,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 66,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 107,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 67,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 108,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 65,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 113,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 112,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 130,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 109,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 126,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 125,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 115,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 114,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 117,
+                    "is_required": "n",
+                    "var_filter": null
+                },
+                {
+                    "datafield_id": 116,
+                    "is_required": "n",
+                    "var_filter": null
+                }
+            ],
+            "imports": [],
+            "is_string": null,
+            "methods_execute": "PluginCheck",
+            "object_name": "check_synology",
+            "object_type": "object",
+            "timeout": "45",
+            "vars": {
+                "disk_temp_crit": "70",
+                "disk_temp_warn": "60",
+                "mem_critical": "90",
+                "mem_warning": "80",
+                "network_crit": "95",
+                "network_warn": "90",
+                "snmp_port": "161",
+                "snmp_version": "3",
+                "snmpv3_address": "$host.address$",
+                "snmpv3_auth_proto": "SHA",
+                "snmpv3_priv_proto": "AES",
+                "storage_used_crit": "90",
+                "storage_used_warn": "80",
+                "synology_mode": "all",
+                "temp_crit": "80",
+                "temp_warn": "70",
+                "ups_level_crit": "50",
+                "ups_level_warn": "25",
+                "ups_load_crit": "90",
+                "ups_load_warn": "80"
+            },
+            "zone": null
+        }
+    },
+    "Datafield": {
+        "111": {
+            "category_id": null,
+            "varname": "disk_temp_crit",
+            "caption": "disk_temp_crit",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "111",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "110": {
+            "category_id": null,
+            "varname": "disk_temp_warn",
+            "caption": "disk_temp_warn",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "110",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "3": {
+            "category_id": null,
+            "varname": "mem_critical",
+            "caption": "mem_critical",
+            "description": "Percent free\/used when critical",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "3",
+            "settings": {}
+        },
+        "4": {
+            "category_id": null,
+            "varname": "mem_warning",
+            "caption": "mem_warning",
+            "description": "Percent free\/used when to warn",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "4",
+            "settings": {}
+        },
+        "121": {
+            "category_id": null,
+            "varname": "network_crit",
+            "caption": "network_crit",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "121",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "122": {
+            "category_id": null,
+            "varname": "network_warn",
+            "caption": "network_warn",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "122",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "69": {
+            "category_id": null,
+            "varname": "snmp_community_name",
+            "caption": "snmp_community_name",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "69",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "119": {
+            "category_id": null,
+            "varname": "snmp_port",
+            "caption": "snmp_port",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "119",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "120": {
+            "category_id": null,
+            "varname": "snmp_version",
+            "caption": "snmp_version",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "120",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "64": {
+            "category_id": null,
+            "varname": "snmpv3_address",
+            "caption": "snmpv3_address",
+            "description": "Host name, IP Address, or unix socket (must be an absolute path)",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "64",
+            "settings": {}
+        },
+        "66": {
+            "category_id": null,
+            "varname": "snmpv3_auth_key",
+            "caption": "snmpv3_auth_key",
+            "description": "SNMPv3 authentication password",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "66",
+            "settings": {}
+        },
+        "107": {
+            "category_id": null,
+            "varname": "snmpv3_auth_proto",
+            "caption": "snmpv3_auth_proto",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "107",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "67": {
+            "category_id": null,
+            "varname": "snmpv3_priv_key",
+            "caption": "snmpv3_priv_key",
+            "description": "SNMPv3 privacy password",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "67",
+            "settings": {}
+        },
+        "108": {
+            "category_id": null,
+            "varname": "snmpv3_priv_proto",
+            "caption": "snmpv3_priv_proto",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "108",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "65": {
+            "category_id": null,
+            "varname": "snmpv3_user",
+            "caption": "snmpv3_user",
+            "description": "SNMPv3 username",
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "65",
+            "settings": {}
+        },
+        "113": {
+            "category_id": null,
+            "varname": "storage_used_crit",
+            "caption": "storage_used_crit",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "113",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "112": {
+            "category_id": null,
+            "varname": "storage_used_warn",
+            "caption": "storage_used_warn",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "112",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "130": {
+            "category_id": null,
+            "varname": "synology_exclude_mode",
+            "caption": "synology_exclude_mode",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "130",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "109": {
+            "category_id": null,
+            "varname": "synology_mode",
+            "caption": "synology_mode",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "109",
+            "settings": {
+                "rename_vars": "y",
+                "visibility": "visible"
+            }
+        },
+        "126": {
+            "category_id": null,
+            "varname": "temp_crit",
+            "caption": "temp_crit",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "126",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "125": {
+            "category_id": null,
+            "varname": "temp_warn",
+            "caption": "temp_warn",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "125",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "115": {
+            "category_id": null,
+            "varname": "ups_level_crit",
+            "caption": "ups_level_crit",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "115",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "114": {
+            "category_id": null,
+            "varname": "ups_level_warn",
+            "caption": "ups_level_warn",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "114",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "117": {
+            "category_id": null,
+            "varname": "ups_load_crit",
+            "caption": "ups_load_crit",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "117",
+            "settings": {
+                "visibility": "visible"
+            }
+        },
+        "116": {
+            "category_id": null,
+            "varname": "ups_load_warn",
+            "caption": "ups_load_warn",
+            "description": null,
+            "datatype": "Icinga\\Module\\Director\\DataType\\DataTypeString",
+            "format": null,
+            "originalId": "116",
+            "settings": {
+                "visibility": "visible"
+            }
+        }
+    }
+}

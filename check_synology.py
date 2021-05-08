@@ -556,8 +556,8 @@ if ('ups' in mode  or mode == 'all') and 'ups' not in exclude_mode:
     queue['1.3.6.1.4.1.6574.4.1.3.0'] = { "name": 'UPS S/N', "tag": 'ups-serial', "check": False, "perf": False, "inv": False, }
     queue['1.3.6.1.4.1.6574.4.2.1.0'] = { "name": 'UPS Status', "tag": 'ups-status', "check": "check_ups_status", "perf": False, "inv": False, }
     queue['1.3.6.1.4.1.6574.4.2.6.2.0'] = { "name": 'UPS Manufacturer-Date', "tag": 'ups-manufacturer-date', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.2.12.1.0'] = { "name": 'UPS Load', "tag": 'ups-load', "check": "check_standard", "warn": ups_load_warn, "crit": ups_load_crit,"perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.3.1.1.0'] = { "name": 'UPS Battery Level', "tag": 'ups-battery-level', "check": "check_standard", "warn": ups_level_warn, "crit": ups_level_crit,"perf": False, "inv": True, }
+    queue['1.3.6.1.4.1.6574.4.2.12.1.0'] = { "name": 'UPS Load', "tag": 'ups-load', "check": "check_standard", "warn": ups_load_warn, "crit": ups_load_crit,"perf": True, "inv": False, }
+    queue['1.3.6.1.4.1.6574.4.3.1.1.0'] = { "name": 'UPS Battery Level', "tag": 'ups-battery-level', "check": "check_standard", "warn": ups_level_warn, "crit": ups_level_crit,"perf": True, "inv": True, }
     queue['1.3.6.1.4.1.6574.4.3.1.4.0'] = { "name": 'UPS Battery Warning Level', "tag": 'ups-warning-battery-level', "check": False, "perf": False, "inv": False, }
     queue['1.3.6.1.4.1.6574.4.3.12.0'] = { "name": 'UPS Battery Type', "tag": 'ups-battery-type', "check": False, "perf": False, "inv": False, }
 

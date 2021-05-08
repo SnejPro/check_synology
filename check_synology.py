@@ -380,8 +380,8 @@ def render(r, unit=''):
             if v["check"]!=False and "warn" in v:
                 pv["warn"] = format_bytes(v["warn"])[2]
                 pv["crit"] = format_bytes(v["crit"])[2]
-                v["warn"] = str(v["warn"])+'B'
-                v["crit"] = str(v["crit"])+'B'
+                v["warn"] = str(v["warn"])
+                v["crit"] = str(v["crit"])
         else:
             pv["value"] = v["value"]
             if v["check"]!=False and "warn" in v:
@@ -603,11 +603,11 @@ if ('network' in mode or mode == 'all') and 'network' not in exclude_mode:
         
         downlink_speed_check = check_standard(n["downlink_speed"],n["link_speed"]*net_warn,net_crit)
         returnstring += "\nDownlink: "+str(n["downlink_speed"])+"b/s - "+downlink_speed_check
-        returnperf += " "+n["name"]+"_downlink_speed="+str(n["downlink_speed"]/8)+"B;"+str(net_warn/8)+"B;"+str(net_crit/8)+"B"
+        returnperf += " "+n["name"]+"_downlink_speed="+str(n["downlink_speed"]/8)+"B;"+str(net_warn/8)+";"+str(net_crit/8)
     
         uplink_speed_check = check_standard(n["uplink_speed"],net_warn,net_crit)
         returnstring += "\nUplink: "+str(n["uplink_speed"])+"b/s - "+uplink_speed_check
-        returnperf += " "+n["name"]+"_uplink_speed="+str(n["uplink_speed"]/8)+"B;"+str(net_warn/8)+"B;"+str(net_crit/8)+"B"
+        returnperf += " "+n["name"]+"_uplink_speed="+str(n["uplink_speed"]/8)+"B;"+str(net_warn/8)+";"+str(net_crit/8)
 
 
 print("NAS-Status: "+state+returnstring+returnperf)

@@ -380,8 +380,8 @@ def render(r, unit=''):
             if v["check"]!=False and "warn" in v:
                 pv["warn"] = format_bytes(v["warn"])[2]
                 pv["crit"] = format_bytes(v["crit"])[2]
-                v["warn"] = str(v["warn"])+'B'
-                v["crit"] = str(v["crit"])+'B'
+                v["warn"] = str(v["warn"])
+                v["crit"] = str(v["crit"])
         else:
             pv["value"] = v["value"]
             if v["check"]!=False and "warn" in v:
@@ -556,8 +556,8 @@ if ('ups' in mode  or mode == 'all') and 'ups' not in exclude_mode:
     queue['1.3.6.1.4.1.6574.4.1.3.0'] = { "name": 'UPS S/N', "tag": 'ups-serial', "check": False, "perf": False, "inv": False, }
     queue['1.3.6.1.4.1.6574.4.2.1.0'] = { "name": 'UPS Status', "tag": 'ups-status', "check": "check_ups_status", "perf": False, "inv": False, }
     queue['1.3.6.1.4.1.6574.4.2.6.2.0'] = { "name": 'UPS Manufacturer-Date', "tag": 'ups-manufacturer-date', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.2.12.1.0'] = { "name": 'UPS Load', "tag": 'ups-load', "check": "check_standard", "warn": ups_load_warn, "crit": ups_load_crit,"perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.3.1.1.0'] = { "name": 'UPS Battery Level', "tag": 'ups-battery-level', "check": "check_standard", "warn": ups_level_warn, "crit": ups_level_crit,"perf": False, "inv": True, }
+    queue['1.3.6.1.4.1.6574.4.2.12.1.0'] = { "name": 'UPS Load', "tag": 'ups-load', "check": "check_standard", "warn": ups_load_warn, "crit": ups_load_crit,"perf": True, "inv": False, }
+    queue['1.3.6.1.4.1.6574.4.3.1.1.0'] = { "name": 'UPS Battery Level', "tag": 'ups-battery-level', "check": "check_standard", "warn": ups_level_warn, "crit": ups_level_crit,"perf": True, "inv": True, }
     queue['1.3.6.1.4.1.6574.4.3.1.4.0'] = { "name": 'UPS Battery Warning Level', "tag": 'ups-warning-battery-level', "check": False, "perf": False, "inv": False, }
     queue['1.3.6.1.4.1.6574.4.3.12.0'] = { "name": 'UPS Battery Type', "tag": 'ups-battery-type', "check": False, "perf": False, "inv": False, }
 
@@ -603,11 +603,11 @@ if ('network' in mode or mode == 'all') and 'network' not in exclude_mode:
         
         downlink_speed_check = check_standard(n["downlink_speed"],n["link_speed"]*net_warn,net_crit)
         returnstring += "\nDownlink: "+str(n["downlink_speed"])+"b/s - "+downlink_speed_check
-        returnperf += " "+n["name"]+"_downlink_speed="+str(n["downlink_speed"]/8)+"B;"+str(net_warn/8)+"B;"+str(net_crit/8)+"B"
+        returnperf += " "+n["name"]+"_downlink_speed="+str(n["downlink_speed"]/8)+"B;"+str(net_warn/8)+";"+str(net_crit/8)
     
         uplink_speed_check = check_standard(n["uplink_speed"],net_warn,net_crit)
         returnstring += "\nUplink: "+str(n["uplink_speed"])+"b/s - "+uplink_speed_check
-        returnperf += " "+n["name"]+"_uplink_speed="+str(n["uplink_speed"]/8)+"B;"+str(net_warn/8)+"B;"+str(net_crit/8)+"B"
+        returnperf += " "+n["name"]+"_uplink_speed="+str(n["uplink_speed"]/8)+"B;"+str(net_warn/8)+";"+str(net_crit/8)
 
 
 print("NAS-Status: "+state+returnstring+returnperf)

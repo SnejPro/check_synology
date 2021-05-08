@@ -1,3 +1,15 @@
+# Icinga2 Script for Synology Diskstation
+
+Running checks and retrieving performance data for following measurements:
+- Load
+- Memory
+- Disk
+- RAID
+- Storage
+- UPS
+- Status
+- Update
+
 ## Icinga Command
 
 ```
@@ -24,15 +36,15 @@ object CheckCommand "check_synology" {
         }
         "--memory_warn" = {
             description = "Memory - warning utilization (in percent)"
-            value = "$mem_critical$"
+            value = "$mem_warning$"
         }
         "--net_crit" = {
             description = "Network - critical utilization (in percent)"
-            value = "$network_warn$"
+            value = "$network_crit$"
         }
         "--net_warn" = {
             description = "Network - warning utilization (in percent)"
-            value = "$network_crit$"
+            value = "$network_warn$"
         }
         "--port" = {
             description = "SNMP port"
@@ -44,7 +56,7 @@ object CheckCommand "check_synology" {
         }
         "--storage_used_crit" = {
             description = "Storage - critical usage (in percent)"
-            value = "$storage_used_warn$"
+            value = "$storage_used_crit$"
         }
         "--storage_used_warn" = {
             description = "Storage - warning usage (in percent)"
@@ -72,7 +84,7 @@ object CheckCommand "check_synology" {
         }
         "--ups_load_warn" = {
             description = "UPS - warning load (in percent)"
-            value = "$ups_load_crit$"
+            value = "$ups_load_warn$"
         }
         "-C" = {
             description = "SNMPv1/2 - community"

@@ -88,7 +88,7 @@ if args.version == '3':
         session_kargs.append(args.priv_key)
 else:
     session_kargs.append("-c")
-    session_kargs.append(community)    
+    session_kargs.append(args.community)    
 
 session_kargs.append(args.hostname+":"+str(args.port))
 

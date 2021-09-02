@@ -3,8 +3,10 @@ import argparse
 import sys
 import math
 import re
+import os
 import time
 import subprocess
+import json
 from pprint import pprint
 
 AUTHOR = "SnejPro"
@@ -40,6 +42,7 @@ parser.add_argument("--ups_level_warn", help="UPS - warning battery level (perce
 parser.add_argument("--ups_level_crit", help="UPS - critical battery level (percent)", type=int, default=30)
 parser.add_argument("--ups_load_warn", help="UPS - warning load (percent)", type=int, default=80)
 parser.add_argument("--ups_load_crit", help="UPS - critical load (percent)", type=int, default=90)
+parser.add_argument("--net_aliases", help="", type=str, default="")
 args = parser.parse_args()
 
 returnstring = ""
@@ -48,10 +51,20 @@ state = "OK"
 
 timeout=5
 
+netfilename = "/tmp/check_synology_"+args.hostname+".json"
+
 session_kargs=[
     "-O","q",
     "-v",str(args.version),
 ]
+
+net_alias = {}
+if args.net_aliases != '':
+    nets = x = args.net_aliases.split(",")
+    for v in nets:
+        net=v.split("=")
+        net_alias[net[0]] = net[1]
+
 if args.version == '3':
     if args.auth_prot == "None":
         session_kargs.append("-l")
@@ -88,7 +101,7 @@ if args.version == '3':
         session_kargs.append(args.priv_key)
 else:
     session_kargs.append("-c")
-    session_kargs.append(community)    
+    session_kargs.append(args.community)    
 
 session_kargs.append(args.hostname+":"+str(args.port))
 
@@ -400,7 +413,7 @@ def render(r, unit=''):
 def render_storage(r, inv=False):
     global returnstring
     global returnperf
-    id = re.findall("[0-9]+$", k)[0]
+    id = num
     size_bytes = int(r['1.3.6.1.2.1.25.2.3.1.4.'+id]['value'])*int(r['1.3.6.1.2.1.25.2.3.1.5.'+id]['value'])
     used_bytes = int(r['1.3.6.1.2.1.25.2.3.1.4.'+id]['value'])*int(r['1.3.6.1.2.1.25.2.3.1.6.'+id]['value'])
     used_percent = (used_bytes/size_bytes)*100
@@ -573,41 +586,68 @@ if ('network' in mode or mode == 'all') and 'network' not in exclude_mode:
     network_speeds = snmpwalk('1.3.6.1.2.1.31.1.1.1.15')
     networks_connected = []
     returnstring += "\n\nNetwork:"
+    
+    networks_downlink1 = snmpwalk('1.3.6.1.2.1.31.1.1.1.6')
+    networks_uplink1 = snmpwalk('1.3.6.1.2.1.31.1.1.1.10')
+    networks_time1 = time.time()
+    networks_json = {}
+    if os.path.exists(netfilename):
+        jsonfile = open(netfilename, "r")
+        jsoncontent = jsonfile.read()
+        try:
+            networks_old=json.loads(jsoncontent)
+        except:
+            networks_old=False
+    else:
+        networks_old=False
+ 
     for k, v in networks.items():
         network = {}
-        if re.search("^eth[0-9]+", v) != None:
-            network["id"] = re.findall("[0-9]+$", k)[0]
-            network["name"] = v
-            if network_speeds['1.3.6.1.2.1.31.1.1.1.15.'+network["id"]] != '0':
-                network["link_speed"] = int(network_speeds['1.3.6.1.2.1.31.1.1.1.15.'+network["id"]])
-                networks_connected.append(network)
-    for n in networks_connected:
-        result = snmpget( ['1.3.6.1.2.1.31.1.1.1.6.'+n["id"],'1.3.6.1.2.1.31.1.1.1.10.'+n["id"]])
-        n["downlink1"]=int(result['1.3.6.1.2.1.31.1.1.1.6.'+n["id"]])
-        n["uplink1"]=int(result['1.3.6.1.2.1.31.1.1.1.10.'+n["id"]])
-        time.sleep(network_mesurement_time)
-        result = snmpget( ['1.3.6.1.2.1.31.1.1.1.6.'+n["id"],'1.3.6.1.2.1.31.1.1.1.10.'+n["id"]])
-        n["downlink2"]=int(result['1.3.6.1.2.1.31.1.1.1.6.'+n["id"]])
-        n["uplink2"]=int(result['1.3.6.1.2.1.31.1.1.1.10.'+n["id"]])
+        #if re.search("^eth[0-9]+", v) != None:
+        network["id"] = re.findall("[0-9]+$", k)[0]
         
-        n["downlink_speed"]=round(((n["downlink2"]-n["downlink1"])*8)/network_mesurement_time)
-        n["uplink_speed"]=round(((n["uplink2"]-n["uplink1"])*8)/network_mesurement_time)
-        
+        network["name"] = v
+        if v in net_alias:
+            network["alias"] = net_alias[v]+"("+v+")"
+        else:
+            network["alias"] = v
+            
+        if network_speeds['1.3.6.1.2.1.31.1.1.1.15.'+network["id"]] != '0':
+            network["link_speed"] = int(network_speeds['1.3.6.1.2.1.31.1.1.1.15.'+network["id"]])*10**6
+            networks_connected.append(network)
 
+    for n in networks_connected:
+        networks_json[n["name"]] = {
+            "downlink_counter": int(networks_downlink1['1.3.6.1.2.1.31.1.1.1.6.'+n["id"]]),
+            "uplink_counter": int(networks_uplink1['1.3.6.1.2.1.31.1.1.1.10.'+n["id"]]),
+            "time": networks_time1
+        }
+        if networks_old != False and n["name"] in networks_old:
+            returnstring += "\n"+n["alias"]+":"
+            n["net_warn"]=round(n["link_speed"]*net_warn/100)
+            n["net_crit"]=round(n["link_speed"]*net_crit/100)
         
-        n["link_speed"]=int(network_speeds['1.3.6.1.2.1.31.1.1.1.15.'+n["id"]])*10**6
+            timespan = networks_time1-networks_old[n["name"]]["time"]
         
-        returnstring += "\n"+n["name"]+":"
-        net_warn=round(n["link_speed"]*net_warn/100)
-        net_crit=round(n["link_speed"]*net_crit/100)
-        
-        downlink_speed_check = check_standard(n["downlink_speed"],n["link_speed"]*net_warn,net_crit)
-        returnstring += "\nDownlink: "+str(n["downlink_speed"])+"b/s - "+downlink_speed_check
-        returnperf += " "+n["name"]+"_downlink_speed="+str(n["downlink_speed"]/8)+"B;"+str(net_warn/8)+";"+str(net_crit/8)
-    
-        uplink_speed_check = check_standard(n["uplink_speed"],net_warn,net_crit)
-        returnstring += "\nUplink: "+str(n["uplink_speed"])+"b/s - "+uplink_speed_check
-        returnperf += " "+n["name"]+"_uplink_speed="+str(n["uplink_speed"]/8)+"B;"+str(net_warn/8)+";"+str(net_crit/8)
+            n["downlink1"]=int(networks_old[n["name"]]["downlink_counter"])
+            n["downlink2"]=int(networks_downlink1['1.3.6.1.2.1.31.1.1.1.6.'+n["id"]])
+            n["downlink_speed"]=round(((n["downlink2"]-n["downlink1"])*8)/timespan)
+            downlink_speed_check = check_standard(n["downlink_speed"],n["link_speed"]*n["net_warn"],n["net_crit"])
+            returnstring += "\nDownlink: "+str(n["downlink_speed"])+"b/s - "+downlink_speed_check
+            returnperf += " '"+n["alias"]+"_downlink_speed'="+str(n["downlink_speed"]/8)+"B;"+str(n["net_warn"]/8)+";"+str(n["net_crit"]/8)
+            returnperf += " '"+n["alias"]+"_downlink_octects'="+str(n["downlink2"])
+            
+            n["uplink1"]=int(networks_old[n["name"]]["uplink_counter"])
+            n["uplink2"]=int(networks_uplink1['1.3.6.1.2.1.31.1.1.1.10.'+n["id"]])
+            n["uplink_speed"]=round(((n["uplink2"]-n["uplink1"])*8)/timespan)
+            uplink_speed_check = check_standard(n["uplink_speed"],n["net_warn"],n["net_crit"])
+            returnstring += "\nUplink: "+str(n["uplink_speed"])+"b/s - "+uplink_speed_check
+            returnperf += " '"+n["alias"]+"_uplink_speed'="+str(n["uplink_speed"]/8)+"B;"+str(n["net_warn"]/8)+";"+str(n["net_crit"]/8)
+            returnperf += " '"+n["alias"]+"_uplink_octects'="+str(n["uplink2"])
+
+    jsonfile = open(netfilename, "w")
+    jsonfile.write(json.dumps(networks_json))
+    jsonfile.close()    
 
 
 print("NAS-Status: "+state+returnstring+returnperf)

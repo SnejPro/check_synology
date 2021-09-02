@@ -413,7 +413,7 @@ def render(r, unit=''):
 def render_storage(r, inv=False):
     global returnstring
     global returnperf
-    id = re.findall("[0-9]+$", k)[0]
+    id = num
     size_bytes = int(r['1.3.6.1.2.1.25.2.3.1.4.'+id]['value'])*int(r['1.3.6.1.2.1.25.2.3.1.5.'+id]['value'])
     used_bytes = int(r['1.3.6.1.2.1.25.2.3.1.4.'+id]['value'])*int(r['1.3.6.1.2.1.25.2.3.1.6.'+id]['value'])
     used_percent = (used_bytes/size_bytes)*100

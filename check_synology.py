@@ -473,15 +473,17 @@ if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
     queue = {}
     
     queue['1.3.6.1.4.1.2021.4.5.0'] = { "name": 'Memory - Total', "tag": 'memory-total', "check": False, "perf": True, "inv": False, }
-    queue['1.3.6.1.4.1.2021.4.6.0'] = { "name": 'Memory - Used', "tag": 'memory-used', "check": "check_standard", "perf": True, "inv": False, }
+    queue['1.3.6.1.4.1.2021.4.6.0'] = { "name": 'Memory - Unused', "tag": 'memory-unused', "check": False, "perf": True, "inv": False, }
     queue['1.3.6.1.4.1.2021.4.15.0'] = { "name": 'Memory - Cached', "tag": 'memory-cached', "check": False, "perf": True, "inv": False, }
 
     res = snmpget(queue)
     merge(res)
     for k, v in queue.items():
         v["value"] = int(v["value"])*1024
-    queue['1.3.6.1.4.1.2021.4.6.0']['warn'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_warn/100)
-    queue['1.3.6.1.4.1.2021.4.6.0']['crit'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_crit/100)
+    queue['1.3.6.1.4.1.2021.4.99.0'] = { "name": 'Memory - Used', "tag": 'memory-used', "check": "check_standard", "perf": True, "inv": False, }   
+    queue['1.3.6.1.4.1.2021.4.99.0']['value'] = queue['1.3.6.1.4.1.2021.4.5.0']['value'] - queue['1.3.6.1.4.1.2021.4.6.0']['value']
+    queue['1.3.6.1.4.1.2021.4.99.0']['warn'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_warn/100)
+    queue['1.3.6.1.4.1.2021.4.99.0']['crit'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_crit/100)
     render(queue, unit='B')
 
 if ('disk' in mode  or mode == 'all') and 'disk' not in exclude_mode:

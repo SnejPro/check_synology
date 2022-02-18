@@ -196,13 +196,6 @@ def format_bytes(size):
         size /= power
         n += 1
     return size, power_labels[n]+'B', str(round(size,2))+' '+power_labels[n]+'B'
-
-
-def get_queue_oids():
-    oids = []
-    for k, v in queue.items():
-        oids.append(ObjectType(ObjectIdentity(k)))
-    return oids;
     
 def snmpwalk(oid):
     result={}
@@ -476,6 +469,7 @@ if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
     
     queue['1.3.6.1.4.1.2021.4.5.0'] = { "name": 'Memory - Total', "tag": 'memory-total', "check": False, "perf": True, "inv": False, }
     queue['1.3.6.1.4.1.2021.4.6.0'] = { "name": 'Memory - Unused', "tag": 'memory-unused', "check": False, "perf": True, "inv": False, }
+    queue['1.3.6.1.4.1.2021.4.14.0'] = { "name": 'Memory - Buffer', "tag": 'memory-buffer', "check": False, "perf": True, "inv": False, }
     queue['1.3.6.1.4.1.2021.4.15.0'] = { "name": 'Memory - Cached', "tag": 'memory-cached', "check": False, "perf": True, "inv": False, }
 
     res = snmpget(queue)
@@ -483,7 +477,7 @@ if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
     for k, v in queue.items():
         v["value"] = int(v["value"])*1024
     queue['1.3.6.1.4.1.2021.4.99.0'] = { "name": 'Memory - Used', "tag": 'memory-used', "check": "check_standard", "perf": True, "inv": False, }   
-    queue['1.3.6.1.4.1.2021.4.99.0']['value'] = queue['1.3.6.1.4.1.2021.4.5.0']['value'] - queue['1.3.6.1.4.1.2021.4.6.0']['value']
+    queue['1.3.6.1.4.1.2021.4.99.0']['value'] = queue['1.3.6.1.4.1.2021.4.5.0']['value'] - queue['1.3.6.1.4.1.2021.4.6.0']['value'] - queue['1.3.6.1.4.1.2021.4.15.0']['value'] - queue['1.3.6.1.4.1.2021.4.14.0']['value']
     queue['1.3.6.1.4.1.2021.4.99.0']['warn'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_warn/100)
     queue['1.3.6.1.4.1.2021.4.99.0']['crit'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_crit/100)
     render(queue, unit='B')

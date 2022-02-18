@@ -54,7 +54,7 @@ timeout=5
 netfilename = "/tmp/check_synology_"+args.hostname+".json"
 
 session_kargs=[
-    "-O","q",
+    "-O","nq",
     "-v",str(args.version),
 ]
 
@@ -105,8 +105,7 @@ else:
 
 session_kargs.append(args.hostname+":"+str(args.port))
 
-def proc(com, oids):
-    command = [com]
+def proc(command, oids):
     for a in session_kargs:
         command.append(a)
     if isinstance(oids, list):
@@ -119,8 +118,7 @@ def proc(com, oids):
     results = {}
     for l in lines:
         if l != "":
-            key=re.findall("(iso(\.[0-9]+)+) ", l)[0][0]
-            key=key.replace("iso", "1")
+            key=re.findall("(1(\.[0-9]+)+) ", l)[0][0]
             value=re.findall("(?<= ).+", re.findall(" .+", l)[0])[0]
             extractval=re.findall('(?<=^").*(?="$)',value)
             if len(extractval)!=0:
@@ -129,11 +127,11 @@ def proc(com, oids):
     return results
 
 def proc_snmpwalk(oid):
-    command = "snmpwalk"
+    command = [ "snmpwalk" ]
     return proc(command, oid)
 
 def proc_snmpget(oids):
-    command = "snmpget"
+    command = [ "snmpget" ]
     return proc(command, oids)
 
 cpu_cores = args.cpu

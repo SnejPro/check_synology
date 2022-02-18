@@ -27,7 +27,6 @@ parser.add_argument("-C", dest="community", help="SNMP v1, v2c - community", def
 parser.add_argument("-m", dest="mode", help="Comma-seperated list of modes that should be checked: load,memory,disk,raid,storage,ups,status,update,all", type=str, default='all')
 parser.add_argument("-x", dest="exclude_mode", help="Comma-seperated list of modes that should not be checked", type=str)
 
-parser.add_argument("-c", dest="cpu", help="Load - number of cpu cores for calculating thresholds", type=int, default=4)
 parser.add_argument("--memory_warn", help="Memory - warning utilization (percent)", type=int, default=80)
 parser.add_argument("--memory_crit", help="Memory - critical utilization (percent)", type=int, default=90)
 parser.add_argument("--net_warn", help="Network - warning utilization (percent of linkspeed)", type=int, default=90)
@@ -134,7 +133,11 @@ def proc_snmpget(oids):
     command = [ "snmpget" ]
     return proc(command, oids)
 
-cpu_cores = args.cpu
+def count_cores():
+    oid="1.3.6.1.2.1.25.3.3.1.2"
+    core_stats=proc_snmpwalk(oid)
+    return len(core_stats)
+
 temp_warn = args.temp_warn
 temp_crit = args.temp_crit
 
@@ -457,6 +460,7 @@ def exitCode():
         sys.exit(3)
 
 if ('load' in mode or mode == 'all') and 'load' not in exclude_mode:
+    cpu_cores=count_cores()
     returnstring += "\n\nLoad:"
     queue = {}
     queue['1.3.6.1.4.1.2021.10.1.3.1'] = { "name": 'Load - 1', "tag": 'load-1', "check": "check_standard", "warn": cpu_cores*2, "crit": cpu_cores*4, "perf": True, "inv": False, }

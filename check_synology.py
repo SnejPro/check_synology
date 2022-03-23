@@ -238,6 +238,10 @@ def run_queue():
     for to_walk in queue["walk"]:
         snmp_result = snmpwalk(to_walk)
         local_queue_result = { **local_queue_result,  **snmp_result}
+    if len(local_queue_result) == 0:
+        change_state("UNKNOWN")
+        print("UNKNOWN - Error fetching informations from NAS.")
+        exitCode()
 
     queue_result.append( {
             "datetime": time.strftime(datetime_format),

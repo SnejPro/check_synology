@@ -160,7 +160,7 @@ required_values = {
     "storage": [
         { "oid":"1.3.6.1.2.1.25.2.3.1", "type":"walk" }
     ],
-    "raids": [
+    "raid": [
         { "oid":"1.3.6.1.4.1.6574.3.1.1", "type":"walk" }
     ],
     "update": [

@@ -50,7 +50,7 @@ state = "OK"
 
 timeout=5
 
-last_check_file = "/tmp/check_synology_"+args.hostname+".json"
+last_check_file = "/tmp/check_synology_"+args.hostname+"_"+re.sub('\W', '', args.mode)+".json"
 datetime_format = "%Y-%m-%d %H-%M-%S"
 
 session_kargs=[

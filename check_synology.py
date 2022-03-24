@@ -279,18 +279,25 @@ def check_standard(value, warn, crit, inv=False):
             locstate = "OK"
     
     change_state(locstate)  
-    return [ value, locstate, warn, crit ]
+    return { "value":value, "locstate":locstate, "warn":warn, "crit":crit }
  
 def check_ups_status(value):
     if value == "OL":
         locstate = "OK"
+        perfvalue = 1
     elif value == "OL CHRG":
         locstate = "WARNING"
+        perfvalue = 2
+    elif value == "OB DISCHRG":
+        locstate = "CRITICAL"
+        perfvalue = 3
     else:
-        locstate = "CRITICAL"   
+        locstate = "CRITICAL"
+        value = "UNKOWN CRITICAL STATE '"+str(value)+"' - PLEASE REPORT ON GITHUB"
+        perfvalue = 4
     
     change_state(locstate)  
-    return [ value, locstate ]
+    return { "value":value, "locstate":locstate, "perfvalue":perfvalue }
 
 def check_failed(value):
     if value == "1":
@@ -304,7 +311,7 @@ def check_failed(value):
         output = "Unknown status replied"     
         
     change_state(locstate)  
-    return [ output, locstate ]
+    return { "value":output, "locstate":locstate, "perfvalue":value }
     
 def check_update(value):
     if value == "1":
@@ -327,7 +334,7 @@ def check_update(value):
         output = "Unknown status replied"     
         
     change_state(locstate)  
-    return [ output, locstate ]
+    return { "value":output, "locstate":locstate, "perfvalue":value }
     
 def check_disk_status(value):
     if value == "1":
@@ -350,7 +357,7 @@ def check_disk_status(value):
         output = "Unknown status replied"      
         
     change_state(locstate)  
-    return [ output, locstate ]
+    return { "value":output, "locstate":locstate, "perfvalue":value }
    
 def check_raid_status(value):
     if value == "1":
@@ -421,7 +428,7 @@ def check_raid_status(value):
         output = "Unknown status replied"        
         
     change_state(locstate)  
-    return [ output, locstate ]
+    return { "value":output, "locstate":locstate, "perfvalue":value }
 
 
 def exitCode():
@@ -448,7 +455,7 @@ def regex_keys(dict, patterns):
             res.append(key)
     return res
 
-def render(name, tag, perf, value, locstate=False, warn=False, crit=False, unit=""):
+def render(name, tag, perf, value, locstate=False, perfvalue=False, warn=False, crit=False, unit=""):
     global returnstring
     global returnperf
     loc_returnstring = "\n" + name + ": " + str(value) + " " + unit
@@ -459,7 +466,9 @@ def render(name, tag, perf, value, locstate=False, warn=False, crit=False, unit=
 
     returnstring += loc_returnstring
     if perf==True:
-        loc_returnperf = " " + tag + "=" + str(value) + unit
+        if perfvalue == False:
+            perfvalue = value
+        loc_returnperf = " " + tag + "=" + re.sub('\ ', '_', str(perfvalue)) + unit
         if warn != False and crit != False:
             loc_returnperf += ";" + str(warn) + ";" + str(crit)
         returnperf += loc_returnperf
@@ -478,9 +487,9 @@ with open(last_check_file, "w") as f:
 if ('load' in mode or mode == 'all') and 'load' not in exclude_mode:
     returnstring += "\n\nLoad:"
     core_number = count_keys(queue_result[0]["data"], "^1\.3\.6\.1\.2\.1\.25\.3\.3\.1\.2\.[0-9]+")
-    render("Load - 1", "load-1", True, *check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.1'], warn=core_number*2, crit=core_number*4) )
-    render("Load - 5", "load-5", True, *check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.2'], warn=core_number*1.5, crit=core_number*2) )
-    render("Load - 15", "load-15", True, *check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.3'], warn=core_number-0.3, crit=core_number) )
+    render("Load - 1", "load-1", True, **check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.1'], warn=core_number*2, crit=core_number*4) )
+    render("Load - 5", "load-5", True, **check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.2'], warn=core_number*1.5, crit=core_number*2) )
+    render("Load - 15", "load-15", True, **check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.3'], warn=core_number-0.3, crit=core_number) )
 
 if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
     returnstring += "\n\nMemory:"  
@@ -489,7 +498,7 @@ if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
     render("Memory - Buffer", "memory-buffer", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0'])*1000, unit="B")
     render("Memory - Cached", "memory-cached", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0'])*1000, unit="B")
     memoryused = ( int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.6.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0']) )*1000
-    render("Memory - Used", "memory-used", True, *check_standard(memoryused, warn=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_warn*10, crit=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_crit*10), unit="B")
+    render("Memory - Used", "memory-used", True, **check_standard(memoryused, warn=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_warn*10, crit=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_crit*10), unit="B")
 
 if ('disk' in mode or mode == 'all') and 'disk' not in exclude_mode:
     returnstring += "\n\nDisks:"
@@ -497,9 +506,9 @@ if ('disk' in mode or mode == 'all') and 'disk' not in exclude_mode:
     for d in disks:
         num = re.findall("[0-9]+$", d)[0]
         render('Disk '+str(num)+' - Name', 'disk-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.2.'+str(num)])
-        render('Disk '+str(num)+' - Status', 'disk-'+str(num)+'-status', True, *check_disk_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.5.'+str(num)]))
+        render('Disk '+str(num)+' - Status', 'disk-'+str(num)+'-status', True, **check_disk_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.5.'+str(num)]))
         render('Disk '+str(num)+' - Model', 'disk-'+str(num)+'-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.3.'+str(num)])
-        render('Disk '+str(num)+' - Temperature', 'disk-'+str(num)+'-temperature', True, *check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.6.'+str(num)]), crit=args.disk_temp_crit, warn=args.disk_temp_warn))
+        render('Disk '+str(num)+' - Temperature', 'disk-'+str(num)+'-temperature', True, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.6.'+str(num)]), crit=args.disk_temp_crit, warn=args.disk_temp_warn))
     
 if ('storage' in mode or mode == 'all') and 'storage' not in exclude_mode:
     returnstring += "\n\nStorages:"
@@ -516,7 +525,7 @@ if ('storage' in mode or mode == 'all') and 'storage' not in exclude_mode:
         render('Storage '+str(num)+' - Name', 'storage-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.3.'+str(num)])
         render('Storage '+str(num)+' - Allocations Units', 'storage-'+str(num)+'-alloc-units', False, int(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)]))
         render('Storage '+str(num)+' - Size', 'storage-'+str(num)+'-size', False, size, unit="B")
-        render('Storage '+str(num)+' - Used', 'storage-'+str(num)+'-used', True, *check_standard(used, crit=args.storage_used_crit/100*size, warn=args.storage_used_warn/100*size), unit="B")
+        render('Storage '+str(num)+' - Used', 'storage-'+str(num)+'-used', True, **check_standard(used, crit=args.storage_used_crit/100*size, warn=args.storage_used_warn/100*size), unit="B")
 
 if ('raid' in mode or mode == 'all') and 'raid' not in exclude_mode:
     returnstring += "\n\nRaids:"
@@ -524,22 +533,22 @@ if ('raid' in mode or mode == 'all') and 'raid' not in exclude_mode:
     for r in raids:
         num = re.findall("[0-9]+$", r)[0]
         render('RAID '+str(num)+' - Name', 'raid-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.3.1.1.2.'+str(num)])
-        render('RAID '+str(num)+' - Status', 'raid-'+str(num)+'-status', True, *check_raid_status(str(queue_result[0]["data"]['1.3.6.1.4.1.6574.3.1.1.3.'+str(num)])))
+        render('RAID '+str(num)+' - Status', 'raid-'+str(num)+'-status', True, **check_raid_status(str(queue_result[0]["data"]['1.3.6.1.4.1.6574.3.1.1.3.'+str(num)])))
 
 if ('update' in mode  or mode == 'all') and 'update' not in exclude_mode:
     returnstring += "\n\nUpdate:"
-    render('Update - Status', 'update-status', True, *check_update(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.4.0']))
+    render('Update - Status', 'update-status', True, **check_update(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.4.0']))
     render('Update - DSM-Version', 'update-version', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.3.0'])
 
 if ('status' in mode  or mode == 'all') and 'status' not in exclude_mode:
     returnstring += "\n\nStatus:"
     render('Status - Model', 'status-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.1.0'])
     render('Status - S/N', 'status-serial', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.2.0'])
-    render('Status - Temperature', 'status-temp', False, *check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.2.0']), crit=args.temp_crit, warn=args.temp_warn))
-    render('Status - System', 'status-system', True, *check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.1.0']))
-    render('Status - System Fan', 'status-fan-system', True, *check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.1.0']))
-    render('Status - CPU Fan', 'status-fan-cpu', True, *check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.2.0']))
-    render('Status - Power', 'status-power', True, *check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.3.0']))
+    render('Status - Temperature', 'status-temp', False, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.2.0']), crit=args.temp_crit, warn=args.temp_warn))
+    render('Status - System', 'status-system', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.1.0']))
+    render('Status - System Fan', 'status-fan-system', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.1.0']))
+    render('Status - CPU Fan', 'status-fan-cpu', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.2.0']))
+    render('Status - Power', 'status-power', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.3.0']))
 
 if ('ups' in mode  or mode == 'all') and 'ups' not in exclude_mode:
     returnstring += "\n\nUPS:"
@@ -547,10 +556,10 @@ if ('ups' in mode  or mode == 'all') and 'ups' not in exclude_mode:
         render('UPS - Model', 'ups-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.1.1.0'])
         render('UPS - Manufacturer', 'ups-manufacturer', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.1.2.0'])
         render('UPS - S/N', 'ups-serial', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.1.3.0'])
-        render('UPS - Status', 'ups-status', True, *check_ups_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.1.0']))
+        render('UPS - Status', 'ups-status', True, **check_ups_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.1.0']))
         render('UPS - Manufacturer-Date', 'ups-manufacturer-date', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.6.2.0'])
-        render('UPS - Load', 'ups-load', True, *check_standard(float(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.12.1.0']), crit=args.ups_load_crit, warn=args.ups_load_warn))
-        render('UPS - Battery Level', 'ups-battery-level', True, *check_standard(float(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.3.1.1.0']), crit=args.ups_level_crit, warn=args.ups_level_warn, inv=True))
+        render('UPS - Load', 'ups-load', True, **check_standard(float(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.12.1.0']), crit=args.ups_load_crit, warn=args.ups_load_warn))
+        render('UPS - Battery Level', 'ups-battery-level', True, **check_standard(float(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.3.1.1.0']), crit=args.ups_level_crit, warn=args.ups_level_warn, inv=True))
         render('UPS - Battery Warning Level', 'ups-warning-battery-level', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.3.1.1.0'])
         render('UPS - Battery Battery Type', 'ups-battery-type', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.3.12.0'])
     else:
@@ -583,8 +592,8 @@ if ('network' in mode  or mode == 'all') and 'network' not in exclude_mode:
 
                 render('Network '+str(num)+' - Name', 'net-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.2.1.31.1.1.1.1.'+str(num)])
                 render('Network '+str(num)+' - Linkspeed', 'net-'+str(num)+'-link_speed', True, linkspeed, unit="b")
-                render('Network '+str(num)+' - Utilization - Downlink', 'net-'+str(num)+'-util_down', True, *check_standard(downlink_speed, crit=speed_warn, warn=speed_crit), unit="b")
-                render('Network '+str(num)+' - Utilization - Uplink', 'net-'+str(num)+'-util_up', True, *check_standard(uplink_speed, crit=speed_warn, warn=speed_crit), unit="b")
+                render('Network '+str(num)+' - Utilization - Downlink', 'net-'+str(num)+'-util_down', True, **check_standard(downlink_speed, crit=speed_warn, warn=speed_crit), unit="b")
+                render('Network '+str(num)+' - Utilization - Uplink', 'net-'+str(num)+'-util_up', True, **check_standard(uplink_speed, crit=speed_warn, warn=speed_crit), unit="b")
                 render('Network '+str(num)+' - Octets - Downlink', 'net-'+str(num)+'-octets_down', True, downlink_octets_new, unit="B")
                 render('Network '+str(num)+' - Octets - Uplink', 'net-'+str(num)+'-octets_up', True, uplink_octets_new, unit="B")
 

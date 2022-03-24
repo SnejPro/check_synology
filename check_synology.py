@@ -508,7 +508,7 @@ if ('disk' in mode or mode == 'all') and 'disk' not in exclude_mode:
         render('Disk '+str(num)+' - Name', 'disk-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.2.'+str(num)])
         render('Disk '+str(num)+' - Status', 'disk-'+str(num)+'-status', True, **check_disk_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.5.'+str(num)]))
         render('Disk '+str(num)+' - Model', 'disk-'+str(num)+'-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.3.'+str(num)])
-        render('Disk '+str(num)+' - Temperature', 'disk-'+str(num)+'-temperature', True, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.6.'+str(num)]), crit=args.disk_temp_crit, warn=args.disk_temp_warn))
+        render('Disk '+str(num)+' - Temperature', 'disk-'+str(num)+'-temperature', True, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.6.'+str(num)]), crit=args.disk_temp_crit, warn=args.disk_temp_warn), unit="C")
     
 if ('storage' in mode or mode == 'all') and 'storage' not in exclude_mode:
     returnstring += "\n\nStorages:"
@@ -544,7 +544,7 @@ if ('status' in mode  or mode == 'all') and 'status' not in exclude_mode:
     returnstring += "\n\nStatus:"
     render('Status - Model', 'status-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.1.0'])
     render('Status - S/N', 'status-serial', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.2.0'])
-    render('Status - Temperature', 'status-temp', False, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.2.0']), crit=args.temp_crit, warn=args.temp_warn))
+    render('Status - Temperature', 'status-temp', False, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.2.0']), crit=args.temp_crit, warn=args.temp_warn), unit="C")
     render('Status - System', 'status-system', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.1.0']))
     render('Status - System Fan', 'status-fan-system', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.1.0']))
     render('Status - CPU Fan', 'status-fan-cpu', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.2.0']))
@@ -594,8 +594,8 @@ if ('network' in mode  or mode == 'all') and 'network' not in exclude_mode:
                 render('Network '+str(num)+' - Linkspeed', 'net-'+str(num)+'-link_speed', True, linkspeed, unit="b")
                 render('Network '+str(num)+' - Utilization - Downlink', 'net-'+str(num)+'-util_down', True, **check_standard(downlink_speed, crit=speed_warn, warn=speed_crit), unit="b")
                 render('Network '+str(num)+' - Utilization - Uplink', 'net-'+str(num)+'-util_up', True, **check_standard(uplink_speed, crit=speed_warn, warn=speed_crit), unit="b")
-                render('Network '+str(num)+' - Octets - Downlink', 'net-'+str(num)+'-octets_down', True, downlink_octets_new, unit="B")
-                render('Network '+str(num)+' - Octets - Uplink', 'net-'+str(num)+'-octets_up', True, uplink_octets_new, unit="B")
+                render('Network '+str(num)+' - Octets - Downlink', 'net-'+str(num)+'-octets_down', True, downlink_octets_new, unit="c")
+                render('Network '+str(num)+' - Octets - Uplink', 'net-'+str(num)+'-octets_up', True, uplink_octets_new, unit="c")
 
 
     else:

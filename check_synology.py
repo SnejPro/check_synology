@@ -11,7 +11,7 @@ import json
 from pprint import pprint
 
 AUTHOR = "SnejPro"
-VERSION = 0.2
+VERSION = 1.0
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-H", dest="hostname", help="Hostname/IP-adress", type=str)

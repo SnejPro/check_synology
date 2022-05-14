@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 import argparse
+from datetime import datetime
 import sys
 import math
 import re
@@ -10,7 +11,7 @@ import json
 from pprint import pprint
 
 AUTHOR = "SnejPro"
-VERSION = 0.1
+VERSION = 1.0
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-H", dest="hostname", help="Hostname/IP-adress", type=str)
@@ -29,8 +30,8 @@ parser.add_argument("-x", dest="exclude_mode", help="Comma-seperated list of mod
 
 parser.add_argument("--memory_warn", help="Memory - warning utilization (percent)", type=int, default=80)
 parser.add_argument("--memory_crit", help="Memory - critical utilization (percent)", type=int, default=90)
-parser.add_argument("--net_warn", help="Network - warning utilization (percent of linkspeed)", type=int, default=90)
-parser.add_argument("--net_crit", help="Network - critical utilization (percent of linkspeed)", type=int, default=95)
+parser.add_argument("--net_warn", help="Network - warning utilization (percent of linkspeed)", type=int, default=80)
+parser.add_argument("--net_crit", help="Network - critical utilization (percent of linkspeed)", type=int, default=90)
 parser.add_argument("--temp_warn", help="Status - warning NAS temperature", type=int, default=60)
 parser.add_argument("--temp_crit", help="Status - critical NAS temperature", type=int, default=80)
 parser.add_argument("--disk_temp_warn", help="Disk - warning temperature", type=int, default=50)
@@ -41,7 +42,6 @@ parser.add_argument("--ups_level_warn", help="UPS - warning battery level (perce
 parser.add_argument("--ups_level_crit", help="UPS - critical battery level (percent)", type=int, default=30)
 parser.add_argument("--ups_load_warn", help="UPS - warning load (percent)", type=int, default=80)
 parser.add_argument("--ups_load_crit", help="UPS - critical load (percent)", type=int, default=90)
-parser.add_argument("--net_aliases", help="", type=str, default="")
 args = parser.parse_args()
 
 returnstring = ""
@@ -50,19 +50,13 @@ state = "OK"
 
 timeout=5
 
-netfilename = "/tmp/check_synology_"+args.hostname+".json"
+last_check_file = "/tmp/check_synology_"+args.hostname+"_"+re.sub('\W', '', args.mode)+".json"
+datetime_format = "%Y-%m-%d %H-%M-%S"
 
 session_kargs=[
     "-O","nq",
     "-v",str(args.version),
 ]
-
-net_alias = {}
-if args.net_aliases != '':
-    nets = x = args.net_aliases.split(",")
-    for v in nets:
-        net=v.split("=")
-        net_alias[net[0]] = net[1]
 
 if args.version == '3':
     if args.auth_prot == "None":
@@ -104,7 +98,8 @@ else:
 
 session_kargs.append(args.hostname+":"+str(args.port))
 
-def proc(command, oids):
+def run_snmp(proc, oids):
+    command = [ proc ]
     for a in session_kargs:
         command.append(a)
     if isinstance(oids, list):
@@ -125,38 +120,10 @@ def proc(command, oids):
             results[key]=value
     return results
 
-def proc_snmpwalk(oid):
-    command = [ "snmpwalk" ]
-    return proc(command, oid)
-
-def proc_snmpget(oids):
-    command = [ "snmpget" ]
-    return proc(command, oids)
-
 def count_cores():
     oid="1.3.6.1.2.1.25.3.3.1.2"
-    core_stats=proc_snmpwalk(oid)
+    core_stats=run_snmp("snmpwalk", oid)
     return len(core_stats)
-
-temp_warn = args.temp_warn
-temp_crit = args.temp_crit
-
-memory_warn = args.memory_warn
-memory_crit = args.memory_crit
-
-storage_used_warn = args.storage_used_warn
-storage_used_crit = args.storage_used_crit
-
-disk_temp_warn = args.disk_temp_warn
-disk_temp_crit = args.disk_temp_crit
-
-net_warn = args.net_warn
-net_crit = args.net_crit
-
-ups_level_warn = args.ups_level_warn
-ups_level_crit = args.ups_level_crit
-ups_load_warn = args.ups_load_warn
-ups_load_crit = args.ups_load_crit
 
 if args.mode != 'all':
     mode = re.findall("[a-z]+", args.mode)
@@ -170,23 +137,69 @@ else:
 
 network_mesurement_time = 5
 state = 'OK'
+queue = {
+    "get": [],
+    "walk": []
+}
+queue_result = [ ]
 
-def add_queue(oid, name, tag, check=False, warn=None, crit=None, perf=False, inv=False):
-    element = {
-        "tag": tag,
-        "name": name,
-        "perf": perf,
-        "inv": inv,
-        "check": check
-    }
-    if warn != None:
-        element["warn"]=warn
-    if crit != None:
-        element["crit"]=crit 
- 
-    queue[oid]=element
+required_values = {
+    "load" : [
+        { "oid":"1.3.6.1.2.1.25.3.3.1.2", "type":"walk" },
+        { "oid":"1.3.6.1.4.1.2021.10.1.3", "type":"walk" }
+    ],
+    "memory": [
+        { "oid":"1.3.6.1.4.1.2021.4.5.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.2021.4.6.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.2021.4.14.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.2021.4.15.0", "type":"get" }
+    ],
+    "disk": [
+        { "oid":"1.3.6.1.4.1.6574.2.1.1", "type":"walk" }
+    ],
+    "storage": [
+        { "oid":"1.3.6.1.2.1.25.2.3.1", "type":"walk" }
+    ],
+    "raid": [
+        { "oid":"1.3.6.1.4.1.6574.3.1.1", "type":"walk" }
+    ],
+    "update": [
+        { "oid":"1.3.6.1.4.1.6574.1.5.4.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.1.5.3.0", "type":"get" }
+    ],
+    "status": [
+        { "oid":"1.3.6.1.4.1.6574.1.5.1.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.1.5.2.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.1.2.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.1.1.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.1.4.1.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.1.4.2.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.1.3.0", "type":"get" }
+    ],
+    "ups": [
+        { "oid":"1.3.6.1.4.1.6574.4.1.1.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.1.2.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.1.3.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.2.1.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.2.6.2.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.2.12.1.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.3.1.1.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.3.1.4.0", "type":"get" },
+        { "oid":"1.3.6.1.4.1.6574.4.3.12.0", "type":"get" }
+    ],
+    "network": [
+        { "oid":"1.3.6.1.2.1.31.1.1.1", "type":"walk" }
+    ],
+}
 
-def format_bytes(size):
+try:
+    with open(last_check_file, "r") as f:
+        lastcheck_result = json.load(f)
+except:
+    lastcheck_result = False
+
+
+def format_bytes(size, unit):
     # 2**10 = 1024
     #power = 2**10
     power = 10**3
@@ -195,23 +208,46 @@ def format_bytes(size):
     while size > power:
         size /= power
         n += 1
-    return size, power_labels[n]+'B', str(round(size,2))+' '+power_labels[n]+'B'
+    return size, power_labels[n]+unit, str(round(size,2))+' '+power_labels[n]+unit
     
 def snmpwalk(oid):
     result={}
-    snmpres = proc_snmpwalk(oid)
+    snmpres = run_snmp("snmpwalk", oid)
     return snmpres
 
 def snmpget(oid):
     oids = []
-    if isinstance(oid, dict):
+    if isinstance(oid, list):
         for k in oid:
             oids.append(k)
     else:
         oids = oid
     result={}
-    snmpres = proc_snmpget(oids)
+    snmpres = run_snmp("snmpget", oids)
     return snmpres
+
+def add_queue(oid, type):
+    queue[type].append(oid)
+
+def run_queue():
+    global queue
+    global queue_result
+    local_queue_result = {}
+    snmp_result = snmpget(queue["get"])
+    local_queue_result = { **local_queue_result,  **snmp_result}
+    for to_walk in queue["walk"]:
+        snmp_result = snmpwalk(to_walk)
+        local_queue_result = { **local_queue_result,  **snmp_result}
+    if len(local_queue_result) == 0:
+        change_state("UNKNOWN")
+        print("UNKNOWN - Error fetching informations from NAS.")
+        exitCode()
+
+    queue_result.append( {
+            "datetime": time.strftime(datetime_format),
+            "data": local_queue_result
+        }
+    )
             
 def change_state(locstate):
     global state
@@ -220,8 +256,13 @@ def change_state(locstate):
             state = "WARNING"
         elif locstate == "CRITICAL":
             state = "CRITICAL"
+        elif locstate == "UNKNOWN" and state != "WARNING":
+            state = "UNKNOWN"
     
 def check_standard(value, warn, crit, inv=False):
+    value = float(value)
+    warn = float(warn)
+    crit = float(crit)
     if inv==False:
         if crit > value >= warn:
             locstate = "WARNING"
@@ -238,29 +279,39 @@ def check_standard(value, warn, crit, inv=False):
             locstate = "OK"
     
     change_state(locstate)  
-    return locstate
+    return { "value":value, "locstate":locstate, "warn":warn, "crit":crit }
  
 def check_ups_status(value):
     if value == "OL":
         locstate = "OK"
+        perfvalue = 1
     elif value == "OL CHRG":
         locstate = "WARNING"
+        perfvalue = 2
+    elif value == "OB DISCHRG":
+        locstate = "CRITICAL"
+        perfvalue = 3
     else:
         locstate = "CRITICAL"
+        value = "UNKOWN CRITICAL STATE '"+str(value)+"' - PLEASE REPORT ON GITHUB"
+        perfvalue = 4
     
     change_state(locstate)  
-    return locstate
+    return { "value":value, "locstate":locstate, "perfvalue":perfvalue }
 
 def check_failed(value):
     if value == "1":
         locstate = "OK"
         output = "Normal"
     elif value == "2":
-        locstate = "Critical"
+        locstate = "CRITICAL"
         output = "Failed"
+    else:
+        locstate = "CRITICAL"
+        output = "Unknown status replied"     
         
     change_state(locstate)  
-    return output+' - '+locstate
+    return { "value":output, "locstate":locstate, "perfvalue":value }
     
 def check_update(value):
     if value == "1":
@@ -278,9 +329,12 @@ def check_update(value):
     elif value == "5":
         locstate = "CRITICAL"
         output = "Others"
+    else:
+        locstate = "CRITICAL"
+        output = "Unknown status replied"     
         
     change_state(locstate)  
-    return output+' - '+locstate
+    return { "value":output, "locstate":locstate, "perfvalue":value }
     
 def check_disk_status(value):
     if value == "1":
@@ -298,9 +352,12 @@ def check_disk_status(value):
     elif value == "5":
         locstate = "CRITICAL"
         output = "Crashed"
+    else:
+        locstate = "CRITICAL"
+        output = "Unknown status replied"      
         
     change_state(locstate)  
-    return output+' - '+locstate
+    return { "value":output, "locstate":locstate, "perfvalue":value }
    
 def check_raid_status(value):
     if value == "1":
@@ -318,7 +375,7 @@ def check_raid_status(value):
     elif value == "5":
         locstate = "WARNING"
         output = "Deleting"
-    if value == "6":
+    elif value == "6":
         locstate = "WARNING"
         output = "Creating"
     elif value == "7":
@@ -333,7 +390,7 @@ def check_raid_status(value):
     elif value == "10":
         locstate = "WARNING"
         output = "Canceling"
-    if value == "11":
+    elif value == "11":
         locstate = "CRITICAL"
         output = "Degrade"
     elif value == "12":
@@ -366,81 +423,13 @@ def check_raid_status(value):
     elif value == "21":
         locstate = "CRITICAL"
         output = "RaidUnknownStatus"
+    else:
+        locstate = "CRITICAL"
+        output = "Unknown status replied"        
         
     change_state(locstate)  
-    return output+' - '+locstate   
+    return { "value":output, "locstate":locstate, "perfvalue":value }
 
-def render(r, unit=''):
-    global returnstring
-    global returnperf
-    for k, v in r.items():
-  
-        if v["check"]!=False and "warn" in v:
-            check_result = globals()[v["check"]](float(v["value"]), float(v["warn"]), float(v["crit"]), v["inv"])
-        elif v["check"]!=False:
-            check_result = globals()[v["check"]](v["value"])
-        
-        pv = {}
-        if unit=='B':
-            pv["value"] = format_bytes(v["value"])[2]
-            v["value"] = str(v["value"])+'B'
-            if v["check"]!=False and "warn" in v:
-                pv["warn"] = format_bytes(v["warn"])[2]
-                pv["crit"] = format_bytes(v["crit"])[2]
-                v["warn"] = str(v["warn"])
-                v["crit"] = str(v["crit"])
-        else:
-            pv["value"] = v["value"]
-            if v["check"]!=False and "warn" in v:
-                pv["warn"] = v["warn"]
-                pv["crit"] = v["crit"]
-        
-        returnstring += "\n"+v["name"]+": "+str(pv["value"])
-        if v["check"]!=False:
-            returnstring += ' - '+check_result
-        if v["perf"] == True:
-            if "warn" in v:
-                returnperf += " "+v["tag"]+"="+str(v["value"])+";"+str(v["warn"])+";"+str(v["crit"])
-            else:
-                returnperf += " "+v["tag"]+"="+str(v["value"])
-
-def render_storage(r, inv=False):
-    global returnstring
-    global returnperf
-    id = num
-    size_bytes = int(r['1.3.6.1.2.1.25.2.3.1.4.'+id]['value'])*int(r['1.3.6.1.2.1.25.2.3.1.5.'+id]['value'])
-    used_bytes = int(r['1.3.6.1.2.1.25.2.3.1.4.'+id]['value'])*int(r['1.3.6.1.2.1.25.2.3.1.6.'+id]['value'])
-    used_percent = (used_bytes/size_bytes)*100
-    #Name
-    returnstring += "\n"+r['1.3.6.1.2.1.25.2.3.1.3.'+id]['name']+": "+r['1.3.6.1.2.1.25.2.3.1.3.'+id]['value']
-    #Allocation Units
-    returnstring += "\n"+r['1.3.6.1.2.1.25.2.3.1.4.'+id]['name']+": "+r['1.3.6.1.2.1.25.2.3.1.4.'+id]['value']
-    #Size
-    returnstring += "\n"+r['1.3.6.1.2.1.25.2.3.1.5.'+id]['name']+": "+str(round(format_bytes(size_bytes)[0], 2))+" "+format_bytes(size_bytes)[1]
-    #Used
-    crit = r['1.3.6.1.2.1.25.2.3.1.6.'+id]['crit']
-    warn = r['1.3.6.1.2.1.25.2.3.1.6.'+id]['warn']
-    if inv==False:
-        if crit > used_percent >= warn:
-            locstate = "WARNING"
-        elif used_percent >= crit:
-            locstate = "CRITICAL"
-        else:
-            locstate = "OK"
-    else:
-        if crit < used_percent <= warn:
-            locstate = "WARNING"
-        elif used_percent <= crit:
-            locstate = "CRITICAL"
-        else:
-            locstate = "OK"
-    returnstring += "\n"+r['1.3.6.1.2.1.25.2.3.1.6.'+id]['name']+": "+str(round(format_bytes(used_bytes)[0], 2))+" "+format_bytes(used_bytes)[1]+" - "+str(round(used_percent, 2))+"% - "+locstate
-    returnperf += " "+r['1.3.6.1.2.1.25.2.3.1.6.'+id]['tag']+"="+str(round(used_bytes))+"B;"+str(round(size_bytes/100*warn))+";"+str(round(size_bytes/100*crit))+";0;"+str(size_bytes)
-    change_state(locstate)
-    
-def merge(res):
-    for k, v in res.items():
-        queue[k]["value"] = v
 
 def exitCode():
     if state == 'OK':
@@ -452,201 +441,170 @@ def exitCode():
     if state == 'UNKNOWN':
         sys.exit(3)
 
+def count_keys(dict, patterns):
+    res = 0
+    for key in dict:
+        if len(re.findall(patterns, key)):
+            res = res + 1
+    return res
+
+def regex_keys(dict, patterns):
+    res = []
+    for key in dict:
+        if len(re.findall(patterns, key)):
+            res.append(key)
+    return res
+
+def render(name, tag, perf, value, locstate=False, perfvalue=False, warn=False, crit=False, unit=""):
+    global returnstring
+    global returnperf
+    loc_returnstring = "\n" + name + ": " + str(value) + " " + unit
+    if unit == "B" or unit == "b":
+        loc_returnstring = "\n" + name + ": " + str(format_bytes(value, unit)[2])
+    if locstate != False:
+        loc_returnstring += " - "+str(locstate)
+
+    returnstring += loc_returnstring
+    if perf==True:
+        if perfvalue == False:
+            perfvalue = value
+        loc_returnperf = " " + tag + "=" + re.sub('\ ', '_', str(perfvalue)) + unit
+        if warn != False and crit != False:
+            loc_returnperf += ";" + str(warn) + ";" + str(crit)
+        returnperf += loc_returnperf
+
+def fetch_required_values():
+    for k, v in required_values.items():
+        if (k in mode or mode == 'all') and k not in exclude_mode:
+            for oids in v:
+                add_queue(oids["oid"], oids["type"])
+    run_queue()
+
+fetch_required_values()
+with open(last_check_file, "w") as f:
+    f.write(json.dumps(queue_result))
+
 if ('load' in mode or mode == 'all') and 'load' not in exclude_mode:
-    cpu_cores=count_cores()
     returnstring += "\n\nLoad:"
-    queue = {}
-    queue['1.3.6.1.4.1.2021.10.1.3.1'] = { "name": 'Load - 1', "tag": 'load-1', "check": "check_standard", "warn": cpu_cores*2, "crit": cpu_cores*4, "perf": True, "inv": False, }
-    queue['1.3.6.1.4.1.2021.10.1.3.2'] = { "name": 'Load - 5', "tag": 'load-5', "check": "check_standard", "warn": cpu_cores*1.5, "crit": cpu_cores*2, "perf": True, "inv": False, }
-    queue['1.3.6.1.4.1.2021.10.1.3.3'] = { "name": 'Load - 15', "tag": 'load-15', "check": "check_standard", "warn": cpu_cores-0.3, "crit": cpu_cores, "perf": True, "inv": False, }
-    res = snmpget(queue)
-    merge(res)
-    render(queue)
+    core_number = count_keys(queue_result[0]["data"], "^1\.3\.6\.1\.2\.1\.25\.3\.3\.1\.2\.[0-9]+")
+    render("Load - 1", "load-1", True, **check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.1'], warn=core_number*2, crit=core_number*4) )
+    render("Load - 5", "load-5", True, **check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.2'], warn=core_number*1.5, crit=core_number*2) )
+    render("Load - 15", "load-15", True, **check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.3'], warn=core_number-0.3, crit=core_number) )
 
 if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
-    returnstring += "\n\nMemory:"
-    queue = {}
-    
-    queue['1.3.6.1.4.1.2021.4.5.0'] = { "name": 'Memory - Total', "tag": 'memory-total', "check": False, "perf": True, "inv": False, }
-    queue['1.3.6.1.4.1.2021.4.6.0'] = { "name": 'Memory - Unused', "tag": 'memory-unused', "check": False, "perf": True, "inv": False, }
-    queue['1.3.6.1.4.1.2021.4.14.0'] = { "name": 'Memory - Buffer', "tag": 'memory-buffer', "check": False, "perf": True, "inv": False, }
-    queue['1.3.6.1.4.1.2021.4.15.0'] = { "name": 'Memory - Cached', "tag": 'memory-cached', "check": False, "perf": True, "inv": False, }
+    returnstring += "\n\nMemory:"  
+    render("Memory - Total", "memory-total", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*1000, unit="B")
+    render("Memory - Unused", "memory-unused", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.6.0'])*1000, unit="B")
+    render("Memory - Buffer", "memory-buffer", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0'])*1000, unit="B")
+    render("Memory - Cached", "memory-cached", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0'])*1000, unit="B")
+    memoryused = ( int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.6.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0']) )*1000
+    render("Memory - Used", "memory-used", True, **check_standard(memoryused, warn=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_warn*10, crit=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_crit*10), unit="B")
 
-    res = snmpget(queue)
-    merge(res)
-    for k, v in queue.items():
-        v["value"] = int(v["value"])*1024
-    queue['1.3.6.1.4.1.2021.4.99.0'] = { "name": 'Memory - Used', "tag": 'memory-used', "check": "check_standard", "perf": True, "inv": False, }   
-    queue['1.3.6.1.4.1.2021.4.99.0']['value'] = queue['1.3.6.1.4.1.2021.4.5.0']['value'] - queue['1.3.6.1.4.1.2021.4.6.0']['value'] - queue['1.3.6.1.4.1.2021.4.15.0']['value'] - queue['1.3.6.1.4.1.2021.4.14.0']['value']
-    queue['1.3.6.1.4.1.2021.4.99.0']['warn'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_warn/100)
-    queue['1.3.6.1.4.1.2021.4.99.0']['crit'] = round(int(queue['1.3.6.1.4.1.2021.4.5.0']['value'])*memory_crit/100)
-    render(queue, unit='B')
-
-if ('disk' in mode  or mode == 'all') and 'disk' not in exclude_mode:
+if ('disk' in mode or mode == 'all') and 'disk' not in exclude_mode:
     returnstring += "\n\nDisks:"
-    disks = snmpwalk('1.3.6.1.4.1.6574.2.1.1.2');
-    for k, v in disks.items():
-        queue = {}
-        num = re.findall("[0-9]+$", k)[0]
-        queue['1.3.6.1.4.1.6574.2.1.1.2.'+str(num)] = { "name": 'Disk '+str(num)+' - Name', "tag": 'disk-'+str(num)+'-name', "check": False, "perf": False, "inv": False, }
-        queue['1.3.6.1.4.1.6574.2.1.1.5.'+str(num)] = { "name": 'Disk '+str(num)+' - Status', "tag": 'disk-'+str(num)+'-status', "check": "check_disk_status", "perf": False, "inv": False }
-        queue['1.3.6.1.4.1.6574.2.1.1.3.'+str(num)] = { "name": 'Disk '+str(num)+' - Model', "tag": 'disk-'+str(num)+'-model', "check": False, "perf": False, "inv": False, }
-        queue['1.3.6.1.4.1.6574.2.1.1.6.'+str(num)] = { "name": 'Disk '+str(num)+' - Temperature', "tag": 'disk-'+str(num)+'-temperature', "check": "check_standard", "warn": disk_temp_warn, "crit": disk_temp_crit, "perf": True, "inv": False, }
-
-        res = snmpget(queue)
-        merge(res)
-        render(queue)
-
-if ('storage' in mode  or mode == 'all') and 'storage' not in exclude_mode:
+    disks = regex_keys(queue_result[0]["data"], "^1\.3\.6\.1\.4\.1\.6574\.2\.1\.1\.2\.[0-9]+")
+    for d in disks:
+        num = re.findall("[0-9]+$", d)[0]
+        render('Disk '+str(num)+' - Name', 'disk-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.2.'+str(num)])
+        render('Disk '+str(num)+' - Status', 'disk-'+str(num)+'-status', True, **check_disk_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.5.'+str(num)]))
+        render('Disk '+str(num)+' - Model', 'disk-'+str(num)+'-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.3.'+str(num)])
+        render('Disk '+str(num)+' - Temperature', 'disk-'+str(num)+'-temperature', True, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.6.'+str(num)]), crit=args.disk_temp_crit, warn=args.disk_temp_warn), unit="C")
+    
+if ('storage' in mode or mode == 'all') and 'storage' not in exclude_mode:
     returnstring += "\n\nStorages:"
-    queue = {}
-    storages = snmpwalk('1.3.6.1.2.1.25.2.3.1.3');
-    storage_ids = []
-    for k, v in storages.items():
-        storageid = k
-        storagename = v
-        x = re.search("\/volume[0-9]*", storagename)
-        if x != None:
-            storage_ids.append(re.findall("[0-9]+$", storageid)[0])
-    for num in storage_ids:
-        queue['1.3.6.1.2.1.25.2.3.1.3.'+str(num)] = { "name": 'Storage '+str(num)+' - Name', "tag": 'storage-'+str(num)+'-name', "check": False, "perf": False, "inv": False, }
-        queue['1.3.6.1.2.1.25.2.3.1.4.'+str(num)] = { "name": 'Storage '+str(num)+' - Allocations Units', "tag": 'storage-'+str(num)+'-alloc-units', "check": False, "perf": False, "inv": False, }
-        queue['1.3.6.1.2.1.25.2.3.1.5.'+str(num)] = { "name": 'Storage '+str(num)+' - Size', "tag": 'storage-'+str(num)+'-size', "check": False, "perf": True, "inv": False, }
-        queue['1.3.6.1.2.1.25.2.3.1.6.'+str(num)] = { "name": 'Storage '+str(num)+' - Used', "tag": 'storage-'+str(num)+'-used', "check": "check_storage", "warn":storage_used_warn, "crit":storage_used_crit,"perf": True, "inv": False, }
-        
-        res = snmpget(queue)
-        merge(res)
-        render_storage(queue)
+    storages = regex_keys(queue_result[0]["data"], "^1\.3\.6\.1\.2\.1\.25\.2\.3\.1\.3\.[0-9]+")
+    for s in storages:
+        num = re.findall("[0-9]+$", s)[0]
 
-if ('raid' in mode  or mode == 'all') and 'raid' not in exclude_mode:
+        x = re.search("\/volume[0-9]+", queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.3.'+str(num)])
+        if x == None:
+            continue
+
+        size = int(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)])*float(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.5.'+str(num)])
+        used = int(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)])*float(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.6.'+str(num)])
+        render('Storage '+str(num)+' - Name', 'storage-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.3.'+str(num)])
+        render('Storage '+str(num)+' - Allocations Units', 'storage-'+str(num)+'-alloc-units', False, int(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)]))
+        render('Storage '+str(num)+' - Size', 'storage-'+str(num)+'-size', False, size, unit="B")
+        render('Storage '+str(num)+' - Used', 'storage-'+str(num)+'-used', True, **check_standard(used, crit=args.storage_used_crit/100*size, warn=args.storage_used_warn/100*size), unit="B")
+
+if ('raid' in mode or mode == 'all') and 'raid' not in exclude_mode:
     returnstring += "\n\nRaids:"
-    queue = {}
-    raids = snmpwalk('1.3.6.1.4.1.6574.3.1.1.2');
-    for k, v in raids.items():
-        num = re.findall("[0-9]+$", k)[0]    
-        queue['1.3.6.1.4.1.6574.3.1.1.2.'+str(num)] = { "name": 'RAID '+str(num)+' - Name', "tag": 'raid-'+str(num)+'-name', "check": False, "perf": False, "inv": False, }
-        queue['1.3.6.1.4.1.6574.3.1.1.3.'+str(num)] = { "name": 'RAID '+str(num)+' - Status', "tag": 'raid-'+str(num)+'-status', "check": "check_raid_status", "perf": False, "inv": False, }
-
-    res = snmpget(queue)
-    merge(res)
-    render(queue)
+    raids = regex_keys(queue_result[0]["data"], "^1\.3\.6\.1\.4\.1\.6574\.3\.1\.1\.2\.[0-9]+")
+    for r in raids:
+        num = re.findall("[0-9]+$", r)[0]
+        render('RAID '+str(num)+' - Name', 'raid-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.3.1.1.2.'+str(num)])
+        render('RAID '+str(num)+' - Status', 'raid-'+str(num)+'-status', True, **check_raid_status(str(queue_result[0]["data"]['1.3.6.1.4.1.6574.3.1.1.3.'+str(num)])))
 
 if ('update' in mode  or mode == 'all') and 'update' not in exclude_mode:
     returnstring += "\n\nUpdate:"
-    queue = {}
-    
-    queue['1.3.6.1.4.1.6574.1.5.4.0'] = { "name": 'Update - Status', "tag": 'update-status', "check": "check_update", "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.1.5.3.0'] = { "name": 'Update - DSM-Version', "tag": 'update-version', "check": False, "perf": False, "inv": False, }
-    
-    res = snmpget(queue)
-    merge(res)
-    render(queue)
+    render('Update - Status', 'update-status', True, **check_update(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.4.0']))
+    render('Update - DSM-Version', 'update-version', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.3.0'])
 
 if ('status' in mode  or mode == 'all') and 'status' not in exclude_mode:
     returnstring += "\n\nStatus:"
-    queue = {}
-    
-    queue['1.3.6.1.4.1.6574.1.5.1.0'] = { "name": 'Status - Model', "tag": 'status-model', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.1.5.2.0'] = { "name": 'Status - S/N', "tag": 'status-serial', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.1.2.0'] = { "name": 'Status - Temperature', "tag": 'status-temp', "check": "check_standard", "warn":temp_warn, "crit":temp_crit,"perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.1.1.0'] = { "name": 'Status - System', "tag": 'status-system', "check": "check_failed", "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.1.4.1.0'] = { "name": 'Status - System Fan', "tag": 'status-fan-system', "check": "check_failed", "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.1.4.2.0'] = { "name": 'Status - CPU Fan', "tag": 'status-fan-cpu', "check": "check_failed", "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.1.3.0'] = { "name": 'Status - Power', "tag": 'status-power', "check": "check_failed", "perf": False, "inv": False, }
-    
-    res = snmpget(queue)
-    merge(res)
-    render(queue)
+    render('Status - Model', 'status-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.1.0'])
+    render('Status - S/N', 'status-serial', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.1.5.2.0'])
+    render('Status - Temperature', 'status-temp', False, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.2.0']), crit=args.temp_crit, warn=args.temp_warn), unit="C")
+    render('Status - System', 'status-system', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.1.0']))
+    render('Status - System Fan', 'status-fan-system', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.1.0']))
+    render('Status - CPU Fan', 'status-fan-cpu', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.4.2.0']))
+    render('Status - Power', 'status-power', True, **check_failed(queue_result[0]["data"]['1.3.6.1.4.1.6574.1.3.0']))
 
 if ('ups' in mode  or mode == 'all') and 'ups' not in exclude_mode:
     returnstring += "\n\nUPS:"
-    queue = {}
-    
-    queue['1.3.6.1.4.1.6574.4.1.1.0'] = { "name": 'UPS Model', "tag": 'ups-model', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.1.2.0'] = { "name": 'UPS Manufacturer', "tag": 'ups-manufacturer', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.1.3.0'] = { "name": 'UPS S/N', "tag": 'ups-serial', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.2.1.0'] = { "name": 'UPS Status', "tag": 'ups-status', "check": "check_ups_status", "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.2.6.2.0'] = { "name": 'UPS Manufacturer-Date', "tag": 'ups-manufacturer-date', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.2.12.1.0'] = { "name": 'UPS Load', "tag": 'ups-load', "check": "check_standard", "warn": ups_load_warn, "crit": ups_load_crit,"perf": True, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.3.1.1.0'] = { "name": 'UPS Battery Level', "tag": 'ups-battery-level', "check": "check_standard", "warn": ups_level_warn, "crit": ups_level_crit,"perf": True, "inv": True, }
-    queue['1.3.6.1.4.1.6574.4.3.1.4.0'] = { "name": 'UPS Battery Warning Level', "tag": 'ups-warning-battery-level', "check": False, "perf": False, "inv": False, }
-    queue['1.3.6.1.4.1.6574.4.3.12.0'] = { "name": 'UPS Battery Type', "tag": 'ups-battery-type', "check": False, "perf": False, "inv": False, }
-
-    res = snmpget(queue)
-    if res['1.3.6.1.4.1.6574.4.1.1.0'] != 'No Such Instance currently exists at this OID':
-        merge(res)
-        render(queue)
+    if queue_result[0]["data"]['1.3.6.1.4.1.6574.4.1.1.0'] != 'No Such Instance currently exists at this OID':
+        render('UPS - Model', 'ups-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.1.1.0'])
+        render('UPS - Manufacturer', 'ups-manufacturer', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.1.2.0'])
+        render('UPS - S/N', 'ups-serial', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.1.3.0'])
+        render('UPS - Status', 'ups-status', True, **check_ups_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.1.0']))
+        render('UPS - Manufacturer-Date', 'ups-manufacturer-date', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.6.2.0'])
+        render('UPS - Load', 'ups-load', True, **check_standard(float(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.2.12.1.0']), crit=args.ups_load_crit, warn=args.ups_load_warn))
+        render('UPS - Battery Level', 'ups-battery-level', True, **check_standard(float(queue_result[0]["data"]['1.3.6.1.4.1.6574.4.3.1.1.0']), crit=args.ups_level_crit, warn=args.ups_level_warn, inv=True))
+        render('UPS - Battery Warning Level', 'ups-warning-battery-level', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.3.1.1.0'])
+        render('UPS - Battery Battery Type', 'ups-battery-type', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.4.3.12.0'])
     else:
-        returnstring += " No UPS found"
+        change_state('UNKNOWN')
+        render('UPS - Status', 'ups-status', False, 'Can not find UPS', 'UNKNOWN')
 
-if ('network' in mode or mode == 'all') and 'network' not in exclude_mode:
-    networks = snmpwalk('1.3.6.1.2.1.31.1.1.1.1')
-    network_speeds = snmpwalk('1.3.6.1.2.1.31.1.1.1.15')
-    networks_connected = []
+if ('network' in mode  or mode == 'all') and 'network' not in exclude_mode:
     returnstring += "\n\nNetwork:"
-    
-    networks_downlink1 = snmpwalk('1.3.6.1.2.1.31.1.1.1.6')
-    networks_uplink1 = snmpwalk('1.3.6.1.2.1.31.1.1.1.10')
-    networks_time1 = time.time()
-    networks_json = {}
-    if os.path.exists(netfilename):
-        jsonfile = open(netfilename, "r")
-        jsoncontent = jsonfile.read()
-        try:
-            networks_old=json.loads(jsoncontent)
-        except:
-            networks_old=False
+    if lastcheck_result != False:
+        last_check_timestamp = datetime.strptime(lastcheck_result[0]["datetime"], datetime_format)
+        current_check_timestamp = datetime.strptime(queue_result[0]["datetime"], datetime_format)
+        timespan=(current_check_timestamp-last_check_timestamp).total_seconds()
+        networks = regex_keys(queue_result[0]["data"], "^1\.3\.6\.1\.2\.1\.31\.1\.1\.1\.1\.[0-9]+")
+        for n in networks:
+            num = re.findall("[0-9]+$", n)[0]
+            linkspeed=int(queue_result[0]["data"]['1.3.6.1.2.1.31.1.1.1.15.'+str(num)])*10**6
+            if linkspeed != 0:
+                speed_warn=linkspeed*args.net_warn
+                speed_crit=linkspeed*args.net_crit
+
+                downlink_octets_old=int(lastcheck_result[0]["data"]['1.3.6.1.2.1.31.1.1.1.6.'+str(num)])
+                downlink_octets_new=int(queue_result[0]["data"]['1.3.6.1.2.1.31.1.1.1.6.'+str(num)])
+                downlink_octets_diff=downlink_octets_new-downlink_octets_old
+                downlink_speed=round(((downlink_octets_diff)*8)/timespan)
+
+                uplink_octets_old=int(lastcheck_result[0]["data"]['1.3.6.1.2.1.31.1.1.1.10.'+str(num)])
+                uplink_octets_new=int(queue_result[0]["data"]['1.3.6.1.2.1.31.1.1.1.10.'+str(num)])
+                uplink_octets_diff=uplink_octets_new-uplink_octets_old
+                uplink_speed=round(((downlink_octets_diff)*8)/timespan)
+
+                render('Network '+str(num)+' - Name', 'net-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.2.1.31.1.1.1.1.'+str(num)])
+                render('Network '+str(num)+' - Linkspeed', 'net-'+str(num)+'-link_speed', True, linkspeed, unit="b")
+                render('Network '+str(num)+' - Utilization - Downlink', 'net-'+str(num)+'-util_down', True, **check_standard(downlink_speed, crit=speed_warn, warn=speed_crit), unit="b")
+                render('Network '+str(num)+' - Utilization - Uplink', 'net-'+str(num)+'-util_up', True, **check_standard(uplink_speed, crit=speed_warn, warn=speed_crit), unit="b")
+                render('Network '+str(num)+' - Octets - Downlink', 'net-'+str(num)+'-octets_down', True, downlink_octets_new, unit="c")
+                render('Network '+str(num)+' - Octets - Uplink', 'net-'+str(num)+'-octets_up', True, uplink_octets_new, unit="c")
+
+
     else:
-        networks_old=False
- 
-    for k, v in networks.items():
-        network = {}
-        #if re.search("^eth[0-9]+", v) != None:
-        network["id"] = re.findall("[0-9]+$", k)[0]
-        
-        network["name"] = v
-        if v in net_alias:
-            network["alias"] = net_alias[v]+"("+v+")"
-        else:
-            network["alias"] = v
-            
-        if network_speeds['1.3.6.1.2.1.31.1.1.1.15.'+network["id"]] != '0':
-            network["link_speed"] = int(network_speeds['1.3.6.1.2.1.31.1.1.1.15.'+network["id"]])*10**6
-            networks_connected.append(network)
+        change_state('UNKNOWN')
+        render('Network - Status', 'net-status', False, 'temporary network file error', 'UNKNOWN')
 
-    for n in networks_connected:
-        networks_json[n["name"]] = {
-            "downlink_counter": int(networks_downlink1['1.3.6.1.2.1.31.1.1.1.6.'+n["id"]]),
-            "uplink_counter": int(networks_uplink1['1.3.6.1.2.1.31.1.1.1.10.'+n["id"]]),
-            "time": networks_time1
-        }
-        if networks_old != False and n["name"] in networks_old:
-            returnstring += "\n"+n["alias"]+":"
-            n["net_warn"]=round(n["link_speed"]*net_warn/100)
-            n["net_crit"]=round(n["link_speed"]*net_crit/100)
-        
-            timespan = networks_time1-networks_old[n["name"]]["time"]
-        
-            n["downlink1"]=int(networks_old[n["name"]]["downlink_counter"])
-            n["downlink2"]=int(networks_downlink1['1.3.6.1.2.1.31.1.1.1.6.'+n["id"]])
-            n["downlink_speed"]=round(((n["downlink2"]-n["downlink1"])*8)/timespan)
-            downlink_speed_check = check_standard(n["downlink_speed"],n["link_speed"]*n["net_warn"],n["net_crit"])
-            returnstring += "\nDownlink: "+str(n["downlink_speed"])+"b/s - "+downlink_speed_check
-            returnperf += " '"+n["alias"]+"_downlink_speed'="+str(n["downlink_speed"]/8)+"B;"+str(n["net_warn"]/8)+";"+str(n["net_crit"]/8)
-            returnperf += " '"+n["alias"]+"_downlink_octects'="+str(n["downlink2"])
-            
-            n["uplink1"]=int(networks_old[n["name"]]["uplink_counter"])
-            n["uplink2"]=int(networks_uplink1['1.3.6.1.2.1.31.1.1.1.10.'+n["id"]])
-            n["uplink_speed"]=round(((n["uplink2"]-n["uplink1"])*8)/timespan)
-            uplink_speed_check = check_standard(n["uplink_speed"],n["net_warn"],n["net_crit"])
-            returnstring += "\nUplink: "+str(n["uplink_speed"])+"b/s - "+uplink_speed_check
-            returnperf += " '"+n["alias"]+"_uplink_speed'="+str(n["uplink_speed"]/8)+"B;"+str(n["net_warn"]/8)+";"+str(n["net_crit"]/8)
-            returnperf += " '"+n["alias"]+"_uplink_octects'="+str(n["uplink2"])
 
-    jsonfile = open(netfilename, "w")
-    jsonfile.write(json.dumps(networks_json))
-    jsonfile.close()    
 
+    
 
 print("NAS-Status: "+state+returnstring+returnperf)
 exitCode()

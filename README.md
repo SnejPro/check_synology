@@ -127,8 +127,8 @@ object CheckCommand "check_synology" {
     vars.disk_temp_warn = "60"
     vars.mem_critical = "90"
     vars.mem_warning = "80"
-    vars.network_crit = "95"
-    vars.network_warn = "90"
+    vars.network_crit = "90"
+    vars.network_warn = "80"
     vars.snmp_port = "161"
     vars.snmp_version = "3"
     vars.snmpv3_address = "$host.address$"
@@ -164,8 +164,8 @@ object CheckCommand "check_synology" {
 | -c | Load - number of cpu cores for calculating thresholds | int | *4* | None |
 | --memory_warn | Memory - warning utilization (in percent) | int | *80* | None |
 | --memory_crit | Memory - critical utilization (in percent) | int | *90* | None |
-| --net_warn | Network - warning utilization (in percent) | int | *90* | None |
-| --net_crit | Network - critical utilization (in percent) | int | *95* | None |
+| --net_warn | Network - warning utilization (in percent) | int | *80* | None |
+| --net_crit | Network - critical utilization (in percent) | int | *90* | None |
 | --temp_warn | Status - warning NAS temperature (in °C) | int | *60* | None |
 | --temp_crit | Status - critical NAS temperature (in °C) | int | *80* | None |
 | --disk_temp_warn | Disk - warning temperature (in °C) | int | *50* | None |

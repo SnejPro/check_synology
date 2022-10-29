@@ -14,7 +14,7 @@ AUTHOR = "SnejPro"
 VERSION = 0.2
 
 parser = argparse.ArgumentParser()
-parser.add_argument("-H", dest="hostname", help="Hostname/IP-adress", type=str)
+parser.add_argument("-H", dest="hostname", help="Hostname/IP-adress", type=str, required=True)
 parser.add_argument("-v", dest="version", help="SNMP version", type=str, default='3', choices=["1","2c","3"])
 parser.add_argument("--port", dest="port", help="SNMP oirt", type=int, default=161)
 

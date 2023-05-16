@@ -65,36 +65,36 @@ if args.version == '3':
     elif args.priv_prot == "None":
         session_kargs.append("-l")
         session_kargs.append("authNoPriv")
-        
+
         session_kargs.append("-a")
         session_kargs.append(args.auth_prot)
-        
+
         session_kargs.append("-A")
         session_kargs.append(args.auth_key)
-        
+
         session_kargs.append("-u")
         session_kargs.append(args.username)
     else:
         session_kargs.append("-l")
         session_kargs.append("authPriv")
-        
+
         session_kargs.append("-a")
         session_kargs.append(args.auth_prot)
-        
+
         session_kargs.append("-A")
         session_kargs.append(args.auth_key)
-        
+
         session_kargs.append("-u")
         session_kargs.append(args.username)
 
         session_kargs.append("-x")
         session_kargs.append(args.priv_prot)
-        
+
         session_kargs.append("-X")
         session_kargs.append(args.priv_key)
 else:
     session_kargs.append("-c")
-    session_kargs.append(args.community)    
+    session_kargs.append(args.community)
 
 session_kargs.append(args.hostname+":"+str(args.port))
 
@@ -113,11 +113,13 @@ def run_snmp(proc, oids):
     for l in lines:
         if l != "":
             key=re.findall("(1(\.[0-9]+)+) ", l)[0][0]
-            value=re.findall("(?<= ).+", re.findall(" .+", l)[0])[0]
-            extractval=re.findall('(?<=^").*(?="$)',value)
-            if len(extractval)!=0:
-                value=extractval[0]
-            results[key]=value
+            tmp=l.split()
+            if len(tmp) > 1:
+                value=re.findall("(?<= ).+", re.findall(" .+", l)[0])[0]
+                extractval=re.findall('(?<=^").*(?="$)',value)
+                if len(extractval)!=0:
+                    value=extractval[0]
+                results[key]=value
     return results
 
 def count_cores():
@@ -129,7 +131,7 @@ if args.mode != 'all':
     mode = re.findall("[a-z]+", args.mode)
 else:
     mode = args.mode
- 
+
 if args.exclude_mode != None:
     exclude_mode = re.findall("[a-z]+", args.exclude_mode)
 else:
@@ -209,7 +211,7 @@ def format_bytes(size, unit):
         size /= power
         n += 1
     return size, power_labels[n]+unit, str(round(size,2))+' '+power_labels[n]+unit
-    
+
 def snmpwalk(oid):
     result={}
     snmpres = run_snmp("snmpwalk", oid)
@@ -248,7 +250,7 @@ def run_queue():
             "data": local_queue_result
         }
     )
-            
+
 def change_state(locstate):
     global state
     if locstate != "OK" and state != "CRITICAL":
@@ -258,7 +260,7 @@ def change_state(locstate):
             state = "CRITICAL"
         elif locstate == "UNKNOWN" and state != "WARNING":
             state = "UNKNOWN"
-    
+
 def check_standard(value, warn, crit, inv=False):
     value = float(value)
     warn = float(warn)
@@ -277,10 +279,10 @@ def check_standard(value, warn, crit, inv=False):
             locstate = "CRITICAL"
         else:
             locstate = "OK"
-    
-    change_state(locstate)  
+
+    change_state(locstate)
     return { "value":value, "locstate":locstate, "warn":warn, "crit":crit }
- 
+
 def check_ups_status(value):
     if value == "OL":
         locstate = "OK"
@@ -295,8 +297,8 @@ def check_ups_status(value):
         locstate = "CRITICAL"
         value = "UNKOWN CRITICAL STATE '"+str(value)+"' - PLEASE REPORT ON GITHUB"
         perfvalue = 4
-    
-    change_state(locstate)  
+
+    change_state(locstate)
     return { "value":value, "locstate":locstate, "perfvalue":perfvalue }
 
 def check_failed(value):
@@ -308,11 +310,11 @@ def check_failed(value):
         output = "Failed"
     else:
         locstate = "CRITICAL"
-        output = "Unknown status replied"     
-        
-    change_state(locstate)  
+        output = "Unknown status replied"
+
+    change_state(locstate)
     return { "value":output, "locstate":locstate, "perfvalue":value }
-    
+
 def check_update(value):
     if value == "1":
         locstate = "WARNING"
@@ -331,11 +333,11 @@ def check_update(value):
         output = "Others"
     else:
         locstate = "CRITICAL"
-        output = "Unknown status replied"     
-        
-    change_state(locstate)  
+        output = "Unknown status replied"
+
+    change_state(locstate)
     return { "value":output, "locstate":locstate, "perfvalue":value }
-    
+
 def check_disk_status(value):
     if value == "1":
         locstate = "OK"
@@ -354,11 +356,11 @@ def check_disk_status(value):
         output = "Crashed"
     else:
         locstate = "CRITICAL"
-        output = "Unknown status replied"      
-        
-    change_state(locstate)  
+        output = "Unknown status replied"
+
+    change_state(locstate)
     return { "value":output, "locstate":locstate, "perfvalue":value }
-   
+
 def check_raid_status(value):
     if value == "1":
         locstate = "OK"
@@ -425,9 +427,9 @@ def check_raid_status(value):
         output = "RaidUnknownStatus"
     else:
         locstate = "CRITICAL"
-        output = "Unknown status replied"        
-        
-    change_state(locstate)  
+        output = "Unknown status replied"
+
+    change_state(locstate)
     return { "value":output, "locstate":locstate, "perfvalue":value }
 
 
@@ -492,13 +494,13 @@ if ('load' in mode or mode == 'all') and 'load' not in exclude_mode:
     render("Load - 15", "load-15", True, **check_standard(queue_result[0]["data"]['1.3.6.1.4.1.2021.10.1.3.3'], warn=core_number-0.3, crit=core_number) )
 
 if ('memory' in mode or mode == 'all') and 'memory' not in exclude_mode:
-    returnstring += "\n\nMemory:"  
-    render("Memory - Total", "memory-total", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*1000, unit="B")
-    render("Memory - Unused", "memory-unused", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.6.0'])*1000, unit="B")
-    render("Memory - Buffer", "memory-buffer", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0'])*1000, unit="B")
-    render("Memory - Cached", "memory-cached", True, int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0'])*1000, unit="B")
-    memoryused = ( int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.6.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0']) - int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0']) )*1000
-    render("Memory - Used", "memory-used", True, **check_standard(memoryused, warn=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_warn*10, crit=int(queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])*args.memory_crit*10), unit="B")
+    returnstring += "\n\nMemory:"
+    render("Memory - Total", "memory-total", True, int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0']))*1000, unit="B")
+    render("Memory - Unused", "memory-unused", True, int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.6.0']))*1000, unit="B")
+    render("Memory - Buffer", "memory-buffer", True, int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0']))*1000, unit="B")
+    render("Memory - Cached", "memory-cached", True, int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0']))*1000, unit="B")
+    memoryused = ( int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0'])) - int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.6.0'])) - int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.15.0'])) - int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.14.0'])) )*1000
+    render("Memory - Used", "memory-used", True, **check_standard(memoryused, warn=int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0']))*args.memory_warn*10, crit=int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.4.1.2021.4.5.0']))*args.memory_crit*10), unit="B")
 
 if ('disk' in mode or mode == 'all') and 'disk' not in exclude_mode:
     returnstring += "\n\nDisks:"
@@ -509,7 +511,7 @@ if ('disk' in mode or mode == 'all') and 'disk' not in exclude_mode:
         render('Disk '+str(num)+' - Status', 'disk-'+str(num)+'-status', True, **check_disk_status(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.5.'+str(num)]))
         render('Disk '+str(num)+' - Model', 'disk-'+str(num)+'-model', False, queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.3.'+str(num)])
         render('Disk '+str(num)+' - Temperature', 'disk-'+str(num)+'-temperature', True, **check_standard(int(queue_result[0]["data"]['1.3.6.1.4.1.6574.2.1.1.6.'+str(num)]), crit=args.disk_temp_crit, warn=args.disk_temp_warn), unit="C")
-    
+
 if ('storage' in mode or mode == 'all') and 'storage' not in exclude_mode:
     returnstring += "\n\nStorages:"
     storages = regex_keys(queue_result[0]["data"], "^1\.3\.6\.1\.2\.1\.25\.2\.3\.1\.3\.[0-9]+")
@@ -520,10 +522,10 @@ if ('storage' in mode or mode == 'all') and 'storage' not in exclude_mode:
         if x == None:
             continue
 
-        size = int(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)])*float(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.5.'+str(num)])
-        used = int(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)])*float(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.6.'+str(num)])
+        size = int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)]))*float(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.5.'+str(num)]))
+        used = int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)]))*float(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.6.'+str(num)]))
         render('Storage '+str(num)+' - Name', 'storage-'+str(num)+'-name', False, queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.3.'+str(num)])
-        render('Storage '+str(num)+' - Allocations Units', 'storage-'+str(num)+'-alloc-units', False, int(queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)]))
+        render('Storage '+str(num)+' - Allocations Units', 'storage-'+str(num)+'-alloc-units', False, int(re.sub('\D', '', queue_result[0]["data"]['1.3.6.1.2.1.25.2.3.1.4.'+str(num)])))
         render('Storage '+str(num)+' - Size', 'storage-'+str(num)+'-size', False, size, unit="B")
         render('Storage '+str(num)+' - Used', 'storage-'+str(num)+'-used', True, **check_standard(used, crit=args.storage_used_crit/100*size, warn=args.storage_used_warn/100*size), unit="B")
 
@@ -604,7 +606,7 @@ if ('network' in mode  or mode == 'all') and 'network' not in exclude_mode:
 
 
 
-    
+
 
 print("NAS-Status: "+state+returnstring+returnperf)
 exitCode()

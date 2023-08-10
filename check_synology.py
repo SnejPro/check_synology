@@ -343,7 +343,7 @@ def check_disk_status(value):
         locstate = "OK"
         output = "Normal"
     elif value == "2":
-        locstate = "WARNING"
+        locstate = "OK"
         output = "Initialized"
     elif value == "3":
         locstate = "WARNING"
